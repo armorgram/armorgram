@@ -486,7 +486,22 @@
       const key = `${cloudConfig.url}::${cloudConfig.anonKey}::${cloudConfig.roomId}`;
       if (key === activeRealtimeKey && supabaseRealtimeChannel) return;
 
+      // Sandbox / Canvas ortamlarında WebSocket erişimi kısıtlıysa SecurityError üretmeden HTTP polling'e geç
+      const isCanvasSandbox =
+        window.location.protocol === 'about:' ||
+        window.location.protocol === 'blob:' ||
+        window.location.protocol === 'data:' ||
+        typeof window.WebSocket === 'undefined';
+
+      if (isCanvasSandbox) {
+        return;
+      }
+
       try {
+        // Bazı sandbox iframe'lerde WebSocket kurucu fonksiyonuna erişim bile SecurityError fırlatabilir
+        const testWsProbe = typeof WebSocket === 'function' ? WebSocket : null;
+        if (!testWsProbe) return;
+
         if (supabaseRealtimeChannel && supabaseRealtimeClient) {
           supabaseRealtimeClient.removeChannel(supabaseRealtimeChannel);
         }
@@ -519,7 +534,7 @@
           });
         activeRealtimeKey = key;
       } catch (err) {
-        // Realtime WebSocket hatası polling döngüsüyle telafi edilir
+        // Kısıtlı ortamlarda WebSocket SecurityError yutulur ve 2s HTTP senkronizasyonu devrede kalır
       }
     }
 
