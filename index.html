@@ -95,15 +95,14 @@
       FOLLOWS: 'armorgram_follows_v3',
       SESSION: 'armorgram_session_v3',
       SAVED_ACCOUNTS: 'armorgram_saved_accounts_v3',
-      CLOUD_BLOB_ID: 'armorgram_cloud_blob_id_v3'
+      CLOUD_ROOM_CODE: 'armorgram_cloud_room_v4'
     };
 
-    const DEFAULT_CLOUD_BLOB_ID = '1343891204918231040';
-    function getCloudEndpoint() {
-      const savedId = localStorage.getItem(STORAGE_KEYS.CLOUD_BLOB_ID) || DEFAULT_CLOUD_BLOB_ID;
-      return `https://jsonblob.com/api/jsonBlob/${savedId}`;
+    const DEFAULT_CLOUD_ROOM = 'armorgram-private-room-v4';
+    function getCloudRoomCode() {
+      const saved = (localStorage.getItem(STORAGE_KEYS.CLOUD_ROOM_CODE) || DEFAULT_CLOUD_ROOM).trim();
+      return saved || DEFAULT_CLOUD_ROOM;
     }
-    const CLOUD_ENDPOINT = getCloudEndpoint();
     const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('armorgram_realtime_channel') : null;
 
     const AVATAR_PRESETS = [
@@ -293,40 +292,70 @@
     let cloudPushTimer = null;
     let firestoreDocRef = null;
     let firestoreUnsubscribe = null;
+    let lastCloudSnapshotHash = '';
 
-    async function ensureCloudBlobEndpoint() {
-      let currentId = localStorage.getItem(STORAGE_KEYS.CLOUD_BLOB_ID) || DEFAULT_CLOUD_BLOB_ID;
-      const currentUrl = `https://jsonblob.com/api/jsonBlob/${currentId}`;
+    function getSnapshotHash(obj) {
       try {
-        const checkRes = await fetch(currentUrl, { method: 'GET', headers: { Accept: 'application/json' } });
-        if (checkRes.ok) {
-          return currentUrl;
-        }
-      } catch (e) {}
-
-      try {
-        const createRes = await fetch('https://jsonblob.com/api/jsonBlob', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            users: state.users,
-            posts: state.posts,
-            messages: state.messages,
-            follows: state.follows,
-            updatedAt: Date.now()
-          })
+        return JSON.stringify({
+          users: (obj.users || []).map((u) => [u.id, u.username, u.displayName, u.lastActive || 0, u.bio || '', u.avatarImage ? 1 : 0]),
+          posts: (obj.posts || []).map((p) => [p.id, p.likes?.length || 0, p.comments?.length || 0]),
+          messages: (obj.messages || []).map((m) => [m.id, m.read ? 1 : 0]),
+          follows: (obj.follows || []).map((f) => `${f.followerId}:${f.followingId}`)
         });
-        if (createRes.ok) {
-          const locationHeader = createRes.headers.get('X-Jsonblob') || createRes.headers.get('Location') || '';
-          const matchId = locationHeader.match(/jsonBlob\/([a-zA-Z0-9_-]+)/);
-          if (matchId && matchId[1]) {
-            localStorage.setItem(STORAGE_KEYS.CLOUD_BLOB_ID, matchId[1]);
-            return `https://jsonblob.com/api/jsonBlob/${matchId[1]}`;
+      } catch (e) {
+        return String(Date.now());
+      }
+    }
+
+    async function fetchRemoteCloudState() {
+      const room = encodeURIComponent(getCloudRoomCode());
+      // Birincil bulut uç noktası: kvdb.io / npoint / keyvalue fallback zinciri
+      const endpoints = [
+        `https://kvdb.io/A9xK3mP2vL8nQ5rT7wY1z/${room}`,
+        `https://api.keyvalue.xyz/1/armorgram_${room}`
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+          if (res.ok) {
+            const text = await res.text();
+            if (text && text.trim().startsWith('{')) {
+              return JSON.parse(text);
+            }
           }
-        }
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    async function writeRemoteCloudState(payload) {
+      const room = encodeURIComponent(getCloudRoomCode());
+      const bodyStr = JSON.stringify(payload);
+      let wroteAny = false;
+
+      try {
+        await fetch(`https://kvdb.io/A9xK3mP2vL8nQ5rT7wY1z/${room}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: bodyStr
+        });
+        wroteAny = true;
       } catch (e) {}
 
-      return currentUrl;
+      try {
+        await fetch(`https://api.keyvalue.xyz/1/armorgram_${room}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: bodyStr
+        });
+        wroteAny = true;
+      } catch (e) {}
+
+      if (wroteAny) {
+        state.cloudConnected = true;
+      }
+      return wroteAny;
     }
 
     async function initFirestoreRealtimeBridge() {
@@ -350,7 +379,7 @@
         }
 
         if (!auth.currentUser) return;
-        firestoreDocRef = fb.doc(db, 'artifacts', appId, 'public', 'data', 'armorgram_state', 'shared_room');
+        firestoreDocRef = fb.doc(db, 'artifacts', appId, 'public', 'data', 'armorgram_state', getCloudRoomCode());
 
         if (firestoreUnsubscribe) firestoreUnsubscribe();
         firestoreUnsubscribe = fb.onSnapshot(
@@ -373,7 +402,7 @@
         const mergedUsers = [...state.users];
         remote.users.forEach((ru) => {
           if (!ru || !ru.id) return;
-          const idx = mergedUsers.findIndex((lu) => lu.id === ru.id || lu.username === ru.username);
+          const idx = mergedUsers.findIndex((lu) => lu.id === ru.id || lu.username.toLowerCase() === String(ru.username || '').toLowerCase());
           if (idx === -1) {
             mergedUsers.push(ru);
             changed = true;
@@ -428,7 +457,15 @@
         });
       }
 
-      if (changed) {
+      const nextHash = getSnapshotHash({
+        users: state.users,
+        posts: state.posts,
+        messages: state.messages,
+        follows: state.follows
+      });
+
+      if (changed || nextHash !== lastCloudSnapshotHash) {
+        lastCloudSnapshotHash = nextHash;
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(state.users));
         localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(state.posts));
         localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(state.messages));
@@ -438,6 +475,42 @@
         if (!isTyping && !state.settingsOpen && !state.editProfileOpen) {
           render();
         }
+      }
+    }
+
+    function pushCloudSync() {
+      clearTimeout(cloudPushTimer);
+      cloudPushTimer = setTimeout(async () => {
+        const payload = {
+          users: state.users,
+          posts: state.posts,
+          messages: state.messages,
+          follows: state.follows,
+          updatedAt: Date.now()
+        };
+
+        try {
+          if (firestoreDocRef && window.__ARMORGRAM_FIREBASE__) {
+            await window.__ARMORGRAM_FIREBASE__.setDoc(firestoreDocRef, payload, { merge: true });
+            state.cloudConnected = true;
+          }
+        } catch (e) {}
+
+        await writeRemoteCloudState(payload);
+      }, 200);
+    }
+
+    async function pullCloudSync(manualNotify = false) {
+      try {
+        const remote = await fetchRemoteCloudState();
+        if (remote) {
+          applyRemoteSnapshot(remote);
+          if (manualNotify) showToast('Bulut verileri güncellendi.', 'success');
+        } else if (manualNotify) {
+          showToast('Bulut bağlantısı kontrol ediliyor...', 'info');
+        }
+      } catch (err) {
+        if (manualNotify) showToast('Ağ bağlantısı kontrol edilemedi.', 'error');
       }
     }
 
@@ -1410,19 +1483,29 @@
 
       return `
         <div class="max-w-lg mx-auto px-4 pt-4 pb-24 space-y-4">
-          <div class="relative">
-            <input
-              id="search-users-input"
-              type="text"
-              value="${escapeHtml(state.searchQuery)}"
-              oninput="state.searchQuery = this.value; updateSearchList();"
-              placeholder="Kullanıcı adı ara..."
-              class="w-full pl-11 pr-4 py-3 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500"
-            />
-            <svg class="w-5 h-5 text-violet-300/60 absolute left-3.5 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="7"/>
-              <path d="m20 20-3.5-3.5"/>
-            </svg>
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+              <input
+                id="search-users-input"
+                type="text"
+                value="${escapeHtml(state.searchQuery)}"
+                oninput="state.searchQuery = this.value; updateSearchList();"
+                placeholder="Kullanıcı adı ara..."
+                class="w-full pl-11 pr-4 py-3 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500"
+              />
+              <svg class="w-5 h-5 text-violet-300/60 absolute left-3.5 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m20 20-3.5-3.5"/>
+              </svg>
+            </div>
+            <button
+              type="button"
+              onclick="pullCloudSync(true)"
+              class="px-3.5 py-3 rounded-2xl bg-surface hover:bg-purple-900/40 border border-white/10 text-xs font-bold text-purple-200 transition cursor-pointer shrink-0"
+              title="Buluttan Kullanıcıları Çek"
+            >
+              Yenile
+            </button>
           </div>
 
           <div id="search-results-container" class="space-y-2.5">
