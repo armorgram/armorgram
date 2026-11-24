@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Armorgram</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            obsidian: '#06030c',
+            night: '#0d0718',
+            surface: '#160d26',
+            borderViolet: '#2d1a4d',
+          },
+          boxShadow: {
+            armor: '0 18px 48px -12px rgba(139, 92, 246, 0.35)',
+            armorSm: '0 8px 24px -6px rgba(139, 92, 246, 0.3)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body {
+      background-color: #06030c;
+      color: #f3e8ff;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .armor-gradient-text {
+      background: linear-gradient(135deg, #f3e8ff 0%, #c084fc 45%, #7e22ce 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .armor-gradient-btn {
+      background: linear-gradient(135deg, #9333ea 0%, #6d28d9 55%, #4c1d95 100%);
+    }
+    .armor-gradient-btn:hover {
+      background: linear-gradient(135deg, #a855f7 0%, #7c3aed 55%, #5b21b6 100%);
+    }
+    .story-ring {
+      background: linear-gradient(135deg, #e879f9 0%, #9333ea 50%, #4c1d95 100%);
+      padding: 2.5px;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes popIn {
+      0% { transform: scale(0.95); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop { animation: popIn 0.2s ease-out forwards; }
+  </style>
+</head>
+<body class="min-h-screen bg-obsidian text-purple-50 antialiased selection:bg-purple-600 selection:text-white">
+  <div id="app" class="min-h-screen flex flex-col"></div>
+  <div id="toast-root" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] pointer-events-none flex flex-col items-center gap-2 w-[92%] max-w-sm"></div>
+
+  <script>
+    // =========================================================================
+    // ARMORGRAM - DURUM & KALICI HAFIZA YÖNETİMİ
+    // =========================================================================
+    const STORAGE_KEYS = {
+      USERS: 'armorgram_users_v3',
+      POSTS: 'armorgram_posts_v3',
+      MESSAGES: 'armorgram_messages_v3',
+      FOLLOWS: 'armorgram_follows_v3',
+      SESSION: 'armorgram_session_v3',
+      SAVED_ACCOUNTS: 'armorgram_saved_accounts_v3'
+    };
+
+    const CLOUD_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/1343891204918231040';
+    const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('armorgram_realtime_channel') : null;
+
+    const AVATAR_PRESETS = [
+      { id: 'violet', bg: 'from-fuchsia-500 via-purple-600 to-indigo-900', label: 'Mor Nebula' },
+      { id: 'rose', bg: 'from-rose-500 via-pink-600 to-purple-900', label: 'Kızıl Yakut' },
+      { id: 'cyan', bg: 'from-cyan-400 via-indigo-600 to-purple-950', label: 'Gece Mavisi' },
+      { id: 'amber', bg: 'from-amber-400 via-orange-600 to-rose-900', label: 'Altın Işık' },
+      { id: 'emerald', bg: 'from-emerald-400 via-teal-600 to-slate-900', label: 'Zümrüt' }
+    ];
+
+    function safeJsonParse(raw, fallback) {
+      try {
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function loadInitialData() {
+      const users = safeJsonParse(localStorage.getItem(STORAGE_KEYS.USERS), []);
+      const posts = safeJsonParse(localStorage.getItem(STORAGE_KEYS.POSTS), []);
+      const messages = safeJsonParse(localStorage.getItem(STORAGE_KEYS.MESSAGES), []);
+      const follows = safeJsonParse(localStorage.getItem(STORAGE_KEYS.FOLLOWS), []);
+      const savedAccounts = safeJsonParse(localStorage.getItem(STORAGE_KEYS.SAVED_ACCOUNTS), []);
+      const sessionUserId = localStorage.getItem(STORAGE_KEYS.SESSION) || null;
+      return { users, posts, messages, follows, savedAccounts, sessionUserId };
+    }
+
+    const initial = loadInitialData();
+
+    const state = {
+      users: initial.users,
+      posts: initial.posts,
+      messages: initial.messages,
+      follows: initial.follows,
+      savedAccounts: initial.savedAccounts,
+      currentUserId: initial.sessionUserId,
+      authMode: 'login',
+      activeTab: 'feed',
+      selectedChatUserId: null,
+      viewedProfileUserId: null,
+      searchQuery: '',
+      postCaption: '',
+      postLocation: '',
+      postImageData: null,
+      settingsOpen: false,
+      settingsSection: 'main',
+      editProfileOpen: false,
+      editDraft: {
+        displayName: '',
+        username: '',
+        bio: '',
+        website: '',
+        gender: 'Belirtmek istemiyorum',
+        avatarPreset: 'violet',
+        avatarImage: null
+      },
+      cloudConnected: false
+    };
+
+    // =========================================================================
+    // YARDIMCI FONKSİYONLAR
+    // =========================================================================
+    function showToast(message, type = 'info') {
+      const root = document.getElementById('toast-root');
+      if (!root) return;
+      const el = document.createElement('div');
+      const colors =
+        type === 'error'
+          ? 'bg-rose-950/95 border-rose-500/50 text-rose-100'
+          : type === 'success'
+          ? 'bg-emerald-950/95 border-emerald-500/50 text-emerald-100'
+          : 'bg-surface/95 border-purple-500/40 text-purple-100';
+      el.className = `px-4 py-3 rounded-2xl border backdrop-blur-md text-xs font-medium shadow-armor animate-pop text-center w-full ${colors}`;
+      el.textContent = message;
+      root.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => el.remove(), 260);
+      }, 2800);
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function normalizeUsername(val) {
+      return String(val || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9._]/g, '');
+    }
+
+    function getUserById(id) {
+      return state.users.find((u) => u.id === id) || null;
+    }
+
+    function getCurrentUser() {
+      if (!state.currentUserId) return null;
+      const found = getUserById(state.currentUserId);
+      if (!found) {
+        state.currentUserId = null;
+        localStorage.removeItem(STORAGE_KEYS.SESSION);
+      }
+      return found;
+    }
+
+    function isUserOnline(user) {
+      if (!user || !user.lastActive) return false;
+      return Date.now() - user.lastActive < 45000;
+    }
+
+    function formatLastSeen(user) {
+      if (!user || !user.lastActive) return 'Çevrimdışı';
+      if (isUserOnline(user)) return 'Çevrimiçi';
+      const diffSec = Math.max(1, Math.floor((Date.now() - user.lastActive) / 1000));
+      if (diffSec < 60) return 'Az önce görüldü';
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin} dk önce görüldü`;
+      const diffHour = Math.floor(diffMin / 60);
+      if (diffHour < 24) return `${diffHour} sa önce görüldü`;
+      const d = new Date(user.lastActive);
+      return `${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    function formatClockTime(ts) {
+      const d = new Date(ts || Date.now());
+      return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatRelativeTime(ts) {
+      const diffSec = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+      if (diffSec < 60) return 'Az önce';
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin} dk önce`;
+      const diffHour = Math.floor(diffMin / 60);
+      if (diffHour < 24) return `${diffHour} sa önce`;
+      const diffDay = Math.floor(diffHour / 24);
+      return `${diffDay} gün önce`;
+    }
+
+    function rememberAccount(user) {
+      if (!user) return;
+      const list = state.savedAccounts.filter((item) => item.id !== user.id && item.username !== user.username);
+      list.unshift({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName || user.username,
+        avatarPreset: user.avatarPreset || 'violet',
+        avatarImage: user.avatarImage || null
+      });
+      state.savedAccounts = list.slice(0, 5);
+      localStorage.setItem(STORAGE_KEYS.SAVED_ACCOUNTS, JSON.stringify(state.savedAccounts));
+    }
+
+    function persistAll(broadcast = true) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(state.users));
+        localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(state.posts));
+        localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(state.messages));
+        localStorage.setItem(STORAGE_KEYS.FOLLOWS, JSON.stringify(state.follows));
+        localStorage.setItem(STORAGE_KEYS.SAVED_ACCOUNTS, JSON.stringify(state.savedAccounts));
+        if (state.currentUserId) {
+          localStorage.setItem(STORAGE_KEYS.SESSION, state.currentUserId);
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.SESSION);
+        }
+        if (broadcast && bc) {
+          bc.postMessage({ type: 'SYNC_STATE', senderId: state.currentUserId });
+        }
+        pushCloudSync();
+      } catch (e) {
+        console.error('Kayıt hatası:', e);
+      }
+    }
+
+    // =========================================================================
+    // BULUT GERÇEK ZAMANLI SENKRONİZASYON (FARKLI TELEFONLAR İÇİN)
+    // =========================================================================
+    let cloudPushTimer = null;
+    function pushCloudSync() {
+      clearTimeout(cloudPushTimer);
+      cloudPushTimer = setTimeout(async () => {
+        try {
+          const payload = {
+            users: state.users,
+            posts: state.posts,
+            messages: state.messages,
+            follows: state.follows,
+            updatedAt: Date.now()
+          };
+          const res = await fetch(CLOUD_ENDPOINT, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) state.cloudConnected = true;
+        } catch (err) {
+          state.cloudConnected = false;
+        }
+      }, 300);
+    }
+
+    async function pullCloudSync() {
+      try {
+        const res = await fetch(CLOUD_ENDPOINT, {
+          method: 'GET',
+          headers: { Accept: 'application/json' }
+        });
+        if (!res.ok) return;
+        const remote = await res.json();
+        if (!remote || typeof remote !== 'object') return;
+        state.cloudConnected = true;
+
+        let changed = false;
+
+        if (Array.isArray(remote.users)) {
+          const mergedUsers = [...state.users];
+          remote.users.forEach((ru) => {
+            if (!ru || !ru.id) return;
+            const idx = mergedUsers.findIndex((lu) => lu.id === ru.id || lu.username === ru.username);
+            if (idx === -1) {
+              mergedUsers.push(ru);
+              changed = true;
+            } else if ((ru.lastActive || 0) > (mergedUsers[idx].lastActive || 0)) {
+              mergedUsers[idx] = { ...mergedUsers[idx], ...ru };
+              changed = true;
+            }
+          });
+          state.users = mergedUsers;
+        }
+
+        if (Array.isArray(remote.posts)) {
+          const postMap = new Map();
+          state.posts.forEach((p) => postMap.set(p.id, p));
+          remote.posts.forEach((rp) => {
+            if (!rp || !rp.id) return;
+            const localP = postMap.get(rp.id);
+            if (!localP) {
+              postMap.set(rp.id, rp);
+              changed = true;
+            } else if ((rp.comments?.length || 0) > (localP.comments?.length || 0) || (rp.likes?.length || 0) !== (localP.likes?.length || 0)) {
+              postMap.set(rp.id, rp);
+              changed = true;
+            }
+          });
+          state.posts = Array.from(postMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        }
+
+        if (Array.isArray(remote.messages)) {
+          const msgMap = new Map();
+          state.messages.forEach((m) => msgMap.set(m.id, m));
+          remote.messages.forEach((rm) => {
+            if (!rm || !rm.id) return;
+            const localM = msgMap.get(rm.id);
+            if (!localM || (rm.read && !localM.read)) {
+              msgMap.set(rm.id, rm);
+              changed = true;
+            }
+          });
+          state.messages = Array.from(msgMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        }
+
+        if (Array.isArray(remote.follows)) {
+          const followSet = new Set(state.follows.map((f) => `${f.followerId}:${f.followingId}`));
+          remote.follows.forEach((rf) => {
+            const key = `${rf.followerId}:${rf.followingId}`;
+            if (!followSet.has(key)) {
+              state.follows.push(rf);
+              followSet.add(key);
+              changed = true;
+            }
+          });
+        }
+
+        if (changed) {
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(state.users));
+          localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(state.posts));
+          localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(state.messages));
+          localStorage.setItem(STORAGE_KEYS.FOLLOWS, JSON.stringify(state.follows));
+          const activeEl = document.activeElement;
+          const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+          if (!isTyping && !state.settingsOpen && !state.editProfileOpen) {
+            render();
+          }
+        }
+      } catch (err) {
+        // Sessiz ağ hatası yönetimi
+      }
+    }
+
+    if (bc) {
+      bc.onmessage = (event) => {
+        if (event.data && event.data.type === 'SYNC_STATE') {
+          const fresh = loadInitialData();
+          state.users = fresh.users;
+          state.posts = fresh.posts;
+          state.messages = fresh.messages;
+          state.follows = fresh.follows;
+          const activeEl = document.activeElement;
+          const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+          if (!isTyping) render();
+        }
+      };
+    }
+
+    window.addEventListener('storage', (e) => {
+      if (Object.values(STORAGE_KEYS).includes(e.key)) {
+        const fresh = loadInitialData();
+        state.users = fresh.users;
+        state.posts = fresh.posts;
+        state.messages = fresh.messages;
+        state.follows = fresh.follows;
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+        if (!isTyping) render();
+      }
+    });
+
+    function heartbeatPresence() {
+      const me = getCurrentUser();
+      if (!me) return;
+      me.lastActive = Date.now();
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(state.users));
+      pushCloudSync();
+    }
+
+    setInterval(() => {
+      heartbeatPresence();
+      pullCloudSync();
+    }, 3500);
+
+    // =========================================================================
+    // KİMLİK DOĞRULAMA & DİREKT GİRİŞ İŞLEMLERİ
+    // =========================================================================
+    function handleRegister(e) {
+      e.preventDefault();
+      const displayName = document.getElementById('reg-displayname')?.value.trim() || '';
+      const rawUsername = document.getElementById('reg-username')?.value || '';
+      const password = document.getElementById('reg-password')?.value || '';
+      const username = normalizeUsername(rawUsername);
+
+      if (username.length < 3) {
+        showToast('Kullanıcı adı en az 3 karakter olmalıdır.', 'error');
+        return;
+      }
+      if (password.length < 5) {
+        showToast('Şifre en az 5 karakter olmalıdır.', 'error');
+        return;
+      }
+      const exists = state.users.some((u) => u.username.toLowerCase() === username);
+      if (exists) {
+        showToast('Bu kullanıcı adı zaten alınmış. Başka bir kullanıcı adı seçin.', 'error');
+        return;
+      }
+
+      const newUser = {
+        id: 'usr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        username,
+        displayName: displayName || username,
+        password,
+        bio: '',
+        website: '',
+        gender: 'Belirtmek istemiyorum',
+        isPrivate: false,
+        avatarPreset: 'violet',
+        avatarImage: null,
+        createdAt: Date.now(),
+        lastActive: Date.now()
+      };
+
+      state.users.push(newUser);
+      state.currentUserId = newUser.id;
+      state.activeTab = 'feed';
+      rememberAccount(newUser);
+      persistAll();
+      showToast(`Hoş geldin ${newUser.username}! Hesabın oluşturuldu.`, 'success');
+      render();
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const rawUsername = document.getElementById('login-username')?.value || '';
+      const password = document.getElementById('login-password')?.value || '';
+      const username = normalizeUsername(rawUsername);
+
+      const user = state.users.find((u) => u.username.toLowerCase() === username);
+      if (!user) {
+        showToast('Kayıtlı kullanıcı bulunamadı. Önce kayıt olmalısınız.', 'error');
+        return;
+      }
+      if (user.password !== password) {
+        showToast('Şifre hatalı.', 'error');
+        return;
+      }
+
+      user.lastActive = Date.now();
+      state.currentUserId = user.id;
+      state.activeTab = 'feed';
+      rememberAccount(user);
+      persistAll();
+      showToast(`Tekrar hoş geldin ${user.username}`, 'success');
+      render();
+    }
+
+    function handleDirectLogin(accountId) {
+      const user = state.users.find((u) => u.id === accountId);
+      if (!user) {
+        state.savedAccounts = state.savedAccounts.filter((a) => a.id !== accountId);
+        localStorage.setItem(STORAGE_KEYS.SAVED_ACCOUNTS, JSON.stringify(state.savedAccounts));
+        showToast('Kayıtlı hesap bulunamadı, yeniden giriş yapın.', 'error');
+        render();
+        return;
+      }
+      user.lastActive = Date.now();
+      state.currentUserId = user.id;
+      state.activeTab = 'feed';
+      rememberAccount(user);
+      persistAll();
+      showToast(`${user.username} hesabına direkt giriş yapıldı`, 'success');
+      render();
+    }
+
+    function removeSavedAccount(accountId, event) {
+      if (event) event.stopPropagation();
+      state.savedAccounts = state.savedAccounts.filter((a) => a.id !== accountId);
+      localStorage.setItem(STORAGE_KEYS.SAVED_ACCOUNTS, JSON.stringify(state.savedAccounts));
+      render();
+    }
+
+    function handleLogout() {
+      const me = getCurrentUser();
+      if (me) {
+        rememberAccount(me);
+        me.lastActive = Date.now() - 120000;
+      }
+      state.currentUserId = null;
+      state.settingsOpen = false;
+      state.settingsSection = 'main';
+      state.selectedChatUserId = null;
+      persistAll();
+      showToast('Oturum kapatıldı.');
+      render();
+    }
+
+    // =========================================================================
+    // TAKİP SİSTEMİ
+    // =========================================================================
+    function isFollowing(followerId, followingId) {
+      return state.follows.some((f) => f.followerId === followerId && f.followingId === followingId);
+    }
+
+    function getFollowerCount(userId) {
+      return state.follows.filter((f) => f.followingId === userId).length;
+    }
+
+    function getFollowingCount(userId) {
+      return state.follows.filter((f) => f.followerId === userId).length;
+    }
+
+    function toggleFollow(targetUserId) {
+      const me = getCurrentUser();
+      if (!me || me.id === targetUserId) return;
+      const idx = state.follows.findIndex((f) => f.followerId === me.id && f.followingId === targetUserId);
+      if (idx > -1) {
+        state.follows.splice(idx, 1);
+        showToast('Takip bırakıldı.');
+      } else {
+        state.follows.push({ followerId: me.id, followingId: targetUserId, createdAt: Date.now() });
+        showToast('Takip ediliyor.', 'success');
+      }
+      persistAll();
+      render();
+    }
+
+    // =========================================================================
+    // GÖNDERİ PAYLAŞIMI, BEĞENİ & YORUM
+    // =========================================================================
+    function handlePostImageSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 960;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          state.postImageData = canvas.toDataURL('image/jpeg', 0.82);
+          render();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleCreatePost(e) {
+      e.preventDefault();
+      const me = getCurrentUser();
+      if (!me) return;
+      if (!state.postImageData) {
+        showToast('Lütfen paylaşmak için bir fotoğraf seçin.', 'error');
+        return;
+      }
+
+      const caption = document.getElementById('post-caption-input')?.value.trim() || state.postCaption.trim();
+      const location = document.getElementById('post-location-input')?.value.trim() || state.postLocation.trim();
+
+      const newPost = {
+        id: 'post_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        userId: me.id,
+        imageData: state.postImageData,
+        caption,
+        location,
+        likes: [],
+        comments: [],
+        createdAt: Date.now()
+      };
+
+      state.posts.unshift(newPost);
+      state.postImageData = null;
+      state.postCaption = '';
+      state.postLocation = '';
+      state.activeTab = 'feed';
+      persistAll();
+      showToast('Fotoğraf paylaşıldı!', 'success');
+      render();
+    }
+
+    function toggleLikePost(postId) {
+      const me = getCurrentUser();
+      if (!me) return;
+      const post = state.posts.find((p) => p.id === postId);
+      if (!post) return;
+      if (!Array.isArray(post.likes)) post.likes = [];
+      const idx = post.likes.indexOf(me.id);
+      if (idx > -1) {
+        post.likes.splice(idx, 1);
+      } else {
+        post.likes.push(me.id);
+      }
+      persistAll();
+      render();
+    }
+
+    function handleAddComment(e, postId) {
+      e.preventDefault();
+      const me = getCurrentUser();
+      if (!me) return;
+      const input = document.getElementById(`comment-input-${postId}`);
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+      const post = state.posts.find((p) => p.id === postId);
+      if (!post) return;
+      if (!Array.isArray(post.comments)) post.comments = [];
+      post.comments.push({
+        id: 'cmt_' + Date.now(),
+        userId: me.id,
+        text,
+        createdAt: Date.now()
+      });
+      persistAll();
+      render();
+    }
+
+    function deletePost(postId) {
+      const me = getCurrentUser();
+      if (!me) return;
+      state.posts = state.posts.filter((p) => !(p.id === postId && p.userId === me.id));
+      persistAll();
+      showToast('Gönderi silindi.');
+      render();
+    }
+
+    // =========================================================================
+    // ANLIK MESAJLAŞMA (DM)
+    // =========================================================================
+    function openChatWith(userId) {
+      const me = getCurrentUser();
+      if (!me) return;
+      state.selectedChatUserId = userId;
+      state.activeTab = 'messages';
+      markMessagesRead(userId);
+      render();
+      setTimeout(() => {
+        const box = document.getElementById('chat-scroll-box');
+        if (box) box.scrollTop = box.scrollHeight;
+      }, 40);
+    }
+
+    function markMessagesRead(otherUserId) {
+      const me = getCurrentUser();
+      if (!me) return;
+      let changed = false;
+      state.messages.forEach((m) => {
+        if (m.senderId === otherUserId && m.receiverId === me.id && !m.read) {
+          m.read = true;
+          changed = true;
+        }
+      });
+      if (changed) persistAll();
+    }
+
+    function getUnreadCountForUser(otherUserId) {
+      const me = getCurrentUser();
+      if (!me) return 0;
+      return state.messages.filter((m) => m.senderId === otherUserId && m.receiverId === me.id && !m.read).length;
+    }
+
+    function getTotalUnreadMessages() {
+      const me = getCurrentUser();
+      if (!me) return 0;
+      return state.messages.filter((m) => m.receiverId === me.id && !m.read).length;
+    }
+
+    function handleSendMessage(e) {
+      e.preventDefault();
+      const me = getCurrentUser();
+      const targetId = state.selectedChatUserId;
+      if (!me || !targetId) return;
+      const input = document.getElementById('dm-message-input');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+
+      state.messages.push({
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        senderId: me.id,
+        receiverId: targetId,
+        text,
+        read: false,
+        createdAt: Date.now()
+      });
+      me.lastActive = Date.now();
+      if (input) input.value = '';
+      persistAll();
+      render();
+      setTimeout(() => {
+        const box = document.getElementById('chat-scroll-box');
+        if (box) box.scrollTop = box.scrollHeight;
+        const nextInput = document.getElementById('dm-message-input');
+        if (nextInput) nextInput.focus();
+      }, 30);
+    }
+
+    // =========================================================================
+    // PROFİL DÜZENLEME & AYARLAR
+    // =========================================================================
+    function openEditProfileModal() {
+      const me = getCurrentUser();
+      if (!me) return;
+      state.editDraft = {
+        displayName: me.displayName || '',
+        username: me.username || '',
+        bio: me.bio || '',
+        website: me.website || '',
+        gender: me.gender || 'Belirtmek istemiyorum',
+        avatarPreset: me.avatarPreset || 'violet',
+        avatarImage: me.avatarImage || null
+      };
+      state.editProfileOpen = true;
+      render();
+    }
+
+    function handleProfilePhotoUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const size = 320;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          state.editDraft.avatarImage = canvas.toDataURL('image/jpeg', 0.85);
+          render();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleSaveProfile(e) {
+      e.preventDefault();
+      const me = getCurrentUser();
+      if (!me) return;
+
+      const displayName = document.getElementById('edit-displayname')?.value.trim() ?? state.editDraft.displayName;
+      const rawUsername = document.getElementById('edit-username')?.value ?? state.editDraft.username;
+      const bio = document.getElementById('edit-bio')?.value ?? state.editDraft.bio;
+      const website = document.getElementById('edit-website')?.value.trim() ?? state.editDraft.website;
+      const gender = document.getElementById('edit-gender')?.value ?? state.editDraft.gender;
+      const cleanUsername = normalizeUsername(rawUsername);
+
+      if (cleanUsername.length < 3) {
+        showToast('Kullanıcı adı en az 3 karakter olmalıdır.', 'error');
+        return;
+      }
+      const conflict = state.users.some((u) => u.id !== me.id && u.username.toLowerCase() === cleanUsername);
+      if (conflict) {
+        showToast('Bu kullanıcı adı başka bir kullanıcı tarafından kullanılıyor.', 'error');
+        return;
+      }
+
+      me.displayName = displayName || cleanUsername;
+      me.username = cleanUsername;
+      me.bio = bio.slice(0, 150);
+      me.website = website;
+      me.gender = gender;
+      me.avatarPreset = state.editDraft.avatarPreset;
+      me.avatarImage = state.editDraft.avatarImage;
+      me.lastActive = Date.now();
+
+      rememberAccount(me);
+      state.editProfileOpen = false;
+      persistAll();
+      showToast('Profil güncellendi.', 'success');
+      render();
+    }
+
+    function handleChangePassword(e) {
+      e.preventDefault();
+      const me = getCurrentUser();
+      if (!me) return;
+      const cur = document.getElementById('set-current-pass')?.value || '';
+      const next1 = document.getElementById('set-new-pass')?.value || '';
+      const next2 = document.getElementById('set-new-pass2')?.value || '';
+
+      if (cur !== me.password) {
+        showToast('Mevcut şifreniz hatalı.', 'error');
+        return;
+      }
+      if (next1.length < 5) {
+        showToast('Yeni şifre en az 5 karakter olmalıdır.', 'error');
+        return;
+      }
+      if (next1 !== next2) {
+        showToast('Yeni şifreler birbiriyle eşleşmiyor.', 'error');
+        return;
+      }
+      me.password = next1;
+      state.settingsSection = 'main';
+      persistAll();
+      showToast('Şifreniz başarıyla değiştirildi.', 'success');
+      render();
+    }
+
+    function toggleAccountPrivacy() {
+      const me = getCurrentUser();
+      if (!me) return;
+      me.isPrivate = !me.isPrivate;
+      persistAll();
+      showToast(me.isPrivate ? 'Hesabınız gizli yapıldı.' : 'Hesabınız herkese açık yapıldı.', 'success');
+      render();
+    }
+
+    // =========================================================================
+    // GÖRSEL BİLEŞENLER (LOGO & AVATAR)
+    // =========================================================================
+    function renderArmorLogo(sizeClass = 'w-14 h-14') {
+      return `
+        <svg class="${sizeClass}" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="armorGradMain" x1="20" y1="15" x2="100" y2="105" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#f5d0fe"/>
+              <stop offset="48%" stop-color="#a855f7"/>
+              <stop offset="100%" stop-color="#581c87"/>
+            </linearGradient>
+            <linearGradient id="armorOrbit" x1="12" y1="75" x2="108" y2="35" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#6b21a8"/>
+              <stop offset="55%" stop-color="#d8b4fe"/>
+              <stop offset="100%" stop-color="#f0abfc"/>
+            </linearGradient>
+          </defs>
+          <path d="M60 16L25 94H41L60 50L79 94H95L60 16Z" fill="url(#armorGradMain)"/>
+          <path d="M16 74C14 56 44 36 82 32C99 30 107 36 104 45C101 55 75 68 42 74C24 77 17 77 16 74Z" stroke="url(#armorOrbit)" stroke-width="4.5" stroke-linecap="round"/>
+          <circle cx="101" cy="37" r="4" fill="#fae8ff"/>
+        </svg>
+      `;
+    }
+
+    function renderAvatar(user, sizeClasses = 'w-10 h-10 text-sm', showOnlineDot = false) {
+      if (!user) return '';
+      const preset = AVATAR_PRESETS.find((p) => p.id === user.avatarPreset) || AVATAR_PRESETS[0];
+      const initialLetter = escapeHtml((user.displayName || user.username || 'A').charAt(0).toUpperCase());
+      const online = showOnlineDot && isUserOnline(user);
+      return `
+        <div class="relative inline-flex shrink-0">
+          ${
+            user.avatarImage
+              ? `<img src="${user.avatarImage}" alt="${escapeHtml(user.username)}" class="${sizeClasses} rounded-full object-cover border border-purple-400/40" />`
+              : `<div class="${sizeClasses} rounded-full bg-gradient-to-br ${preset.bg} flex items-center justify-center font-bold text-white border border-purple-300/30 shadow-inner">${initialLetter}</div>`
+          }
+          ${
+            online
+              ? `<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-obsidian" title="Çevrimiçi"></span>`
+              : ''
+          }
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // EKRANLAR: GİRİŞ & KAYIT
+    // =========================================================================
+    function renderAuthScreen() {
+      const isLogin = state.authMode === 'login';
+      const validSaved = state.savedAccounts.filter((acc) => state.users.some((u) => u.id === acc.id));
+
+      return `
+        <div class="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-[radial-gradient(ellipse_at_top,_#220d42_0%,_#06030c_68%)]">
+          <div class="w-full max-w-sm space-y-5">
+            <div class="bg-night/90 border border-borderViolet rounded-3xl p-7 shadow-armor backdrop-blur-xl">
+              <div class="flex flex-col items-center text-center mb-6">
+                ${renderArmorLogo('w-16 h-16 mb-2')}
+                <h1 class="text-2xl font-extrabold tracking-[0.22em] armor-gradient-text">ARMORGRAM</h1>
+              </div>
+
+              ${
+                isLogin && validSaved.length > 0
+                  ? `<div class="mb-6 space-y-2.5">
+                       <div class="text-[11px] font-semibold uppercase tracking-wider text-violet-300/75 text-center">Kayıtlı Hesapla Direkt Giriş</div>
+                       ${validSaved
+                         .map(
+                           (acc) => `
+                           <div onclick="handleDirectLogin('${acc.id}')" class="flex items-center justify-between p-3 rounded-2xl bg-surface/90 hover:bg-purple-900/35 border border-purple-500/30 cursor-pointer transition group">
+                             <div class="flex items-center gap-3 min-w-0">
+                               ${renderAvatar(acc, 'w-10 h-10 text-sm', false)}
+                               <div class="min-w-0">
+                                 <div class="text-sm font-bold text-white truncate">${escapeHtml(acc.username)}</div>
+                                 <div class="text-xs text-violet-300/75 truncate">${escapeHtml(acc.displayName)}</div>
+                               </div>
+                             </div>
+                             <div class="flex items-center gap-2 shrink-0">
+                               <span class="px-3 py-1.5 rounded-xl armor-gradient-btn text-white text-xs font-bold shadow-armorSm">Giriş Yap</span>
+                               <button type="button" onclick="removeSavedAccount('${acc.id}', event)" class="p-1.5 rounded-lg text-violet-300/60 hover:text-rose-300 hover:bg-white/5" title="Listeden çıkar">
+                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                               </button>
+                             </div>
+                           </div>
+                         `
+                         )
+                         .join('')}
+                     </div>`
+                  : ''
+              }
+
+              ${
+                isLogin
+                  ? `<form onsubmit="handleLogin(event)" class="space-y-3.5">
+                       <div>
+                         <input
+                           id="login-username"
+                           type="text"
+                           required
+                           autocomplete="username"
+                           placeholder="Kullanıcı adı"
+                           class="w-full px-4 py-3 rounded-2xl bg-obsidian/90 border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+                         />
+                       </div>
+                       <div>
+                         <input
+                           id="login-password"
+                           type="password"
+                           required
+                           autocomplete="current-password"
+                           placeholder="Şifre"
+                           class="w-full px-4 py-3 rounded-2xl bg-obsidian/90 border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+                         />
+                       </div>
+                       <button type="submit" class="w-full py-3.5 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm transition cursor-pointer">
+                         Giriş Yap
+                       </button>
+                     </form>`
+                  : `<form onsubmit="handleRegister(event)" class="space-y-3.5">
+                       <div>
+                         <input
+                           id="reg-displayname"
+                           type="text"
+                           placeholder="Ad Soyad"
+                           class="w-full px-4 py-3 rounded-2xl bg-obsidian/90 border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+                         />
+                       </div>
+                       <div>
+                         <input
+                           id="reg-username"
+                           type="text"
+                           required
+                           autocomplete="username"
+                           placeholder="Kullanıcı adı (benzersiz)"
+                           class="w-full px-4 py-3 rounded-2xl bg-obsidian/90 border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+                         />
+                       </div>
+                       <div>
+                         <input
+                           id="reg-password"
+                           type="password"
+                           required
+                           autocomplete="new-password"
+                           placeholder="Şifre (en az 5 karakter)"
+                           class="w-full px-4 py-3 rounded-2xl bg-obsidian/90 border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+                         />
+                       </div>
+                       <button type="submit" class="w-full py-3.5 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm transition cursor-pointer">
+                         Kayıt Ol
+                       </button>
+                     </form>`
+              }
+            </div>
+
+            <div class="bg-night/90 border border-borderViolet rounded-3xl p-4 text-center text-sm text-violet-200/85">
+              ${
+                isLogin
+                  ? `Hesabın yok mu? <button type="button" onclick="state.authMode='register'; render();" class="font-bold text-purple-400 hover:text-purple-300 ml-1 cursor-pointer">Kayıt Ol</button>`
+                  : `Zaten hesabın var mı? <button type="button" onclick="state.authMode='login'; render();" class="font-bold text-purple-400 hover:text-purple-300 ml-1 cursor-pointer">Giriş Yap</button>`
+              }
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // ÜST & ALT NAVİGASYON BARLARI
+    // =========================================================================
+    function renderTopBar(me) {
+      const unreadTotal = getTotalUnreadMessages();
+      return `
+        <header class="sticky top-0 z-30 bg-obsidian/90 backdrop-blur-xl border-b border-white/10">
+          <div class="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+            <button type="button" onclick="state.activeTab='feed'; state.viewedProfileUserId=null; render();" class="flex items-center gap-2 cursor-pointer">
+              ${renderArmorLogo('w-8 h-8')}
+              <span class="text-lg font-extrabold tracking-widest armor-gradient-text">ARMORGRAM</span>
+            </button>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                onclick="state.activeTab='messages'; render();"
+                class="relative p-2.5 rounded-2xl hover:bg-surface text-white transition cursor-pointer"
+                title="Mesajlar"
+              >
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2 11 13"/>
+                  <path d="M22 2 15 22 11 13 2 9 22 2z"/>
+                </svg>
+                ${
+                  unreadTotal > 0
+                    ? `<span class="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-fuchsia-500 text-white text-[10px] font-bold flex items-center justify-center">${unreadTotal}</span>`
+                    : ''
+                }
+              </button>
+            </div>
+          </div>
+        </header>
+      `;
+    }
+
+    function renderBottomNav(me) {
+      const isProfileMe = state.activeTab === 'profile' && (!state.viewedProfileUserId || state.viewedProfileUserId === me.id);
+      return `
+        <nav class="fixed bottom-0 inset-x-0 z-30 bg-obsidian/95 backdrop-blur-xl border-t border-white/10">
+          <div class="max-w-lg mx-auto px-6 h-16 flex items-center justify-between">
+            <button
+              type="button"
+              onclick="state.activeTab='feed'; state.viewedProfileUserId=null; render();"
+              class="p-2.5 rounded-2xl transition cursor-pointer ${state.activeTab === 'feed' ? 'text-purple-400' : 'text-violet-200/70 hover:text-white'}"
+              title="Ana Sayfa"
+            >
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="${state.activeTab === 'feed' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/>
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onclick="state.activeTab='search'; state.viewedProfileUserId=null; render();"
+              class="p-2.5 rounded-2xl transition cursor-pointer ${state.activeTab === 'search' ? 'text-purple-400' : 'text-violet-200/70 hover:text-white'}"
+              title="Ara"
+            >
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m20 20-3.5-3.5"/>
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onclick="state.activeTab='create'; state.viewedProfileUserId=null; render();"
+              class="p-2.5 rounded-2xl transition cursor-pointer ${state.activeTab === 'create' ? 'text-purple-400' : 'text-violet-200/70 hover:text-white'}"
+              title="Paylaş"
+            >
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="3" width="18" height="18" rx="5"/>
+                <path d="M12 8v8M8 12h8"/>
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onclick="state.activeTab='profile'; state.viewedProfileUserId='${me.id}'; render();"
+              class="p-1.5 rounded-full transition cursor-pointer ${isProfileMe ? 'ring-2 ring-purple-400' : ''}"
+              title="Profil"
+            >
+              ${renderAvatar(me, 'w-7 h-7 text-xs', false)}
+            </button>
+          </div>
+        </nav>
+      `;
+    }
+
+    // =========================================================================
+    // SEKME 1: ANA SAYFA (FOTOĞRAF PAYLAŞIMLARI)
+    // =========================================================================
+    function renderFeedView(me) {
+      const visiblePosts = state.posts.filter((post) => {
+        const author = getUserById(post.userId);
+        if (!author) return false;
+        if (author.id === me.id) return true;
+        if (author.isPrivate && !isFollowing(me.id, author.id)) return false;
+        return true;
+      });
+
+      const otherUsers = state.users.filter((u) => u.id !== me.id);
+
+      return `
+        <div class="max-w-lg mx-auto px-4 pt-4 pb-24 space-y-5">
+          ${
+            otherUsers.length > 0
+              ? `<div class="flex items-center gap-3.5 overflow-x-auto no-scrollbar py-1">
+                   ${otherUsers
+                     .map(
+                       (u) => `
+                       <button
+                         type="button"
+                         onclick="openChatWith('${u.id}')"
+                         class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group"
+                       >
+                         <div class="story-ring rounded-full">
+                           <div class="bg-obsidian p-0.5 rounded-full">
+                             ${renderAvatar(u, 'w-14 h-14 text-base', true)}
+                           </div>
+                         </div>
+                         <span class="text-[11px] font-medium text-violet-200/90 max-w-[68px] truncate">${escapeHtml(u.username)}</span>
+                       </button>
+                     `
+                     )
+                     .join('')}
+                 </div>`
+              : ''
+          }
+
+          ${
+            visiblePosts.length === 0
+              ? `<div class="bg-night border border-borderViolet rounded-3xl p-8 text-center space-y-4">
+                   <div class="w-14 h-14 mx-auto rounded-2xl bg-surface border border-white/10 flex items-center justify-center text-purple-400">
+                     <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                       <rect x="3" y="3" width="18" height="18" rx="4"/>
+                       <circle cx="8.5" cy="8.5" r="1.5"/>
+                       <path d="m21 15-5-5L5 21"/>
+                     </svg>
+                   </div>
+                   <div>
+                     <h3 class="text-base font-bold text-white">Henüz fotoğraf paylaşılmadı</h3>
+                     <p class="text-xs text-violet-300/75 mt-1">İlk fotoğrafını paylaşmak için aşağıdaki + butonuna dokun.</p>
+                   </div>
+                   <button type="button" onclick="state.activeTab='create'; render();" class="px-5 py-2.5 rounded-2xl armor-gradient-btn text-white text-xs font-bold shadow-armorSm cursor-pointer">
+                     Fotoğraf Paylaş
+                   </button>
+                 </div>`
+              : visiblePosts
+                  .map((post) => {
+                    const author = getUserById(post.userId);
+                    if (!author) return '';
+                    const likes = Array.isArray(post.likes) ? post.likes : [];
+                    const comments = Array.isArray(post.comments) ? post.comments : [];
+                    const likedByMe = likes.includes(me.id);
+
+                    return `
+                      <article class="bg-night border border-borderViolet rounded-3xl overflow-hidden shadow-armorSm">
+                        <div class="px-4 py-3 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onclick="state.activeTab='profile'; state.viewedProfileUserId='${author.id}'; render();"
+                            class="flex items-center gap-3 text-left cursor-pointer"
+                          >
+                            ${renderAvatar(author, 'w-9 h-9 text-xs', true)}
+                            <div>
+                              <div class="text-sm font-bold text-white leading-tight">${escapeHtml(author.username)}</div>
+                              <div class="text-[11px] text-violet-300/70">
+                                ${post.location ? escapeHtml(post.location) : formatLastSeen(author)}
+                              </div>
+                            </div>
+                          </button>
+                          ${
+                            author.id === me.id
+                              ? `<button type="button" onclick="deletePost('${post.id}')" class="p-2 rounded-xl text-violet-300/60 hover:text-rose-400 hover:bg-white/5 cursor-pointer" title="Sil">
+                                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                                 </button>`
+                              : `<button type="button" onclick="openChatWith('${author.id}')" class="px-3 py-1.5 rounded-xl bg-surface hover:bg-purple-900/40 text-xs font-semibold text-purple-200 cursor-pointer">
+                                   Mesaj
+                                 </button>`
+                          }
+                        </div>
+
+                        <div class="bg-black flex items-center justify-center max-h-[460px] overflow-hidden">
+                          <img src="${post.imageData}" alt="Paylaşım" class="w-full h-auto object-cover" />
+                        </div>
+
+                        <div class="p-4 space-y-3">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                              <button type="button" onclick="toggleLikePost('${post.id}')" class="cursor-pointer transition transform active:scale-125 ${likedByMe ? 'text-rose-500' : 'text-white hover:text-purple-300'}">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="${likedByMe ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                </svg>
+                              </button>
+                              <button type="button" onclick="document.getElementById('comment-input-${post.id}')?.focus()" class="text-white hover:text-purple-300 cursor-pointer">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                                </svg>
+                              </button>
+                            </div>
+                            <span class="text-[11px] text-violet-300/60">${formatRelativeTime(post.createdAt)}</span>
+                          </div>
+
+                          ${
+                            likes.length > 0
+                              ? `<div class="text-xs font-bold text-white">${likes.length} beğenme</div>`
+                              : ''
+                          }
+
+                          ${
+                            post.caption
+                              ? `<div class="text-xs text-purple-100 leading-relaxed">
+                                   <span class="font-bold text-white mr-1.5">${escapeHtml(author.username)}</span>
+                                   ${escapeHtml(post.caption)}
+                                 </div>`
+                              : ''
+                          }
+
+                          ${
+                            comments.length > 0
+                              ? `<div class="space-y-1.5 pt-1 border-t border-white/5">
+                                   ${comments
+                                     .map((c) => {
+                                       const cUser = getUserById(c.userId);
+                                       return `
+                                         <div class="text-xs text-violet-200/90">
+                                           <span class="font-bold text-white mr-1.5">${escapeHtml(cUser ? cUser.username : 'kullanıcı')}</span>
+                                           ${escapeHtml(c.text)}
+                                         </div>
+                                       `;
+                                     })
+                                     .join('')}
+                                 </div>`
+                              : ''
+                          }
+
+                          <form onsubmit="handleAddComment(event, '${post.id}')" class="flex items-center gap-2 pt-1">
+                            <input
+                              id="comment-input-${post.id}"
+                              type="text"
+                              placeholder="Yorum ekle..."
+                              class="flex-1 bg-transparent text-xs text-white placeholder-violet-300/45 focus:outline-none py-1.5"
+                            />
+                            <button type="submit" class="text-xs font-bold text-purple-400 hover:text-purple-300 cursor-pointer">Paylaş</button>
+                          </form>
+                        </div>
+                      </article>
+                    `;
+                  })
+                  .join('')
+          }
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // SEKME 2: KULLANICI ARAMA & TAKİP ETME
+    // =========================================================================
+    function renderSearchView(me) {
+      const q = state.searchQuery.trim().toLowerCase();
+      const filteredUsers = state.users.filter((u) => {
+        if (u.id === me.id) return false;
+        if (!q) return true;
+        return (
+          u.username.toLowerCase().includes(q) ||
+          (u.displayName && u.displayName.toLowerCase().includes(q))
+        );
+      });
+
+      return `
+        <div class="max-w-lg mx-auto px-4 pt-4 pb-24 space-y-4">
+          <div class="relative">
+            <input
+              id="search-users-input"
+              type="text"
+              value="${escapeHtml(state.searchQuery)}"
+              oninput="state.searchQuery = this.value; updateSearchList();"
+              placeholder="Kullanıcı adı ara..."
+              class="w-full pl-11 pr-4 py-3 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500"
+            />
+            <svg class="w-5 h-5 text-violet-300/60 absolute left-3.5 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7"/>
+              <path d="m20 20-3.5-3.5"/>
+            </svg>
+          </div>
+
+          <div id="search-results-container" class="space-y-2.5">
+            ${renderSearchResultsHtml(me, filteredUsers)}
+          </div>
+        </div>
+      `;
+    }
+
+    function updateSearchList() {
+      const me = getCurrentUser();
+      const box = document.getElementById('search-results-container');
+      if (!me || !box) return;
+      const q = state.searchQuery.trim().toLowerCase();
+      const filteredUsers = state.users.filter((u) => {
+        if (u.id === me.id) return false;
+        if (!q) return true;
+        return (
+          u.username.toLowerCase().includes(q) ||
+          (u.displayName && u.displayName.toLowerCase().includes(q))
+        );
+      });
+      box.innerHTML = renderSearchResultsHtml(me, filteredUsers);
+    }
+
+    function renderSearchResultsHtml(me, usersList) {
+      if (usersList.length === 0) {
+        return `
+          <div class="bg-night border border-borderViolet rounded-3xl p-8 text-center text-xs text-violet-300/75">
+            Kayıtlı başka kullanıcı bulunamadı. Diğer telefondan kayıt olunduğunda burada otomatik görünecektir.
+          </div>
+        `;
+      }
+      return usersList
+        .map((u) => {
+          const following = isFollowing(me.id, u.id);
+          return `
+            <div class="bg-night border border-borderViolet rounded-2xl p-3.5 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onclick="state.activeTab='profile'; state.viewedProfileUserId='${u.id}'; render();"
+                class="flex items-center gap-3 min-w-0 text-left cursor-pointer"
+              >
+                ${renderAvatar(u, 'w-11 h-11 text-sm', true)}
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-white truncate">${escapeHtml(u.username)}</div>
+                  <div class="text-xs text-violet-300/75 truncate">${escapeHtml(u.displayName || '')}</div>
+                  <div class="text-[11px] ${isUserOnline(u) ? 'text-emerald-400' : 'text-violet-300/50'}">${formatLastSeen(u)}</div>
+                </div>
+              </button>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onclick="toggleFollow('${u.id}')"
+                  class="px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    following
+                      ? 'bg-surface border border-white/15 text-purple-200 hover:bg-white/10'
+                      : 'armor-gradient-btn text-white shadow-armorSm'
+                  }"
+                >
+                  ${following ? 'Takip Ediliyor' : 'Takip Et'}
+                </button>
+                <button
+                  type="button"
+                  onclick="openChatWith('${u.id}')"
+                  class="p-2 rounded-xl bg-surface hover:bg-purple-900/40 text-purple-200 cursor-pointer"
+                  title="Mesaj Gönder"
+                >
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    // =========================================================================
+    // SEKME 3: FOTOĞRAF PAYLAŞ
+    // =========================================================================
+    function renderCreatePostView() {
+      return `
+        <div class="max-w-lg mx-auto px-4 pt-4 pb-24">
+          <form onsubmit="handleCreatePost(event)" class="bg-night border border-borderViolet rounded-3xl p-5 space-y-4 shadow-armor">
+            <h2 class="text-base font-bold text-white">Yeni Gönderi</h2>
+
+            <label class="block w-full rounded-2xl border-2 border-dashed border-purple-500/40 bg-obsidian/70 hover:bg-surface/50 transition cursor-pointer overflow-hidden">
+              <input type="file" accept="image/*" onchange="handlePostImageSelect(event)" class="hidden" />
+              ${
+                state.postImageData
+                  ? `<img src="${state.postImageData}" alt="Önizleme" class="w-full max-h-80 object-cover" />`
+                  : `<div class="py-14 px-4 flex flex-col items-center justify-center text-center space-y-2">
+                       <div class="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center text-purple-400">
+                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <rect x="3" y="3" width="18" height="18" rx="4"/>
+                           <circle cx="8.5" cy="8.5" r="1.5"/>
+                           <path d="m21 15-5-5L5 21"/>
+                         </svg>
+                       </div>
+                       <div class="text-sm font-semibold text-white">Galeriden Fotoğraf Seç</div>
+                       <div class="text-xs text-violet-300/65">Dokunarak cihazından bir fotoğraf yükle</div>
+                     </div>`
+              }
+            </label>
+
+            <div>
+              <textarea
+                id="post-caption-input"
+                rows="3"
+                oninput="state.postCaption = this.value"
+                placeholder="Açıklama yaz..."
+                class="w-full px-4 py-3 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500 resize-none"
+              >${escapeHtml(state.postCaption)}</textarea>
+            </div>
+
+            <div>
+              <input
+                id="post-location-input"
+                type="text"
+                value="${escapeHtml(state.postLocation)}"
+                oninput="state.postLocation = this.value"
+                placeholder="Konum ekle (isteğe bağlı)"
+                class="w-full px-4 py-3 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <button type="submit" class="w-full py-3.5 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer">
+              Paylaş
+            </button>
+          </form>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // SEKME 4: ANLIK MESAJLAŞMA (DM)
+    // =========================================================================
+    function renderMessagesView(me) {
+      const chatUser = state.selectedChatUserId ? getUserById(state.selectedChatUserId) : null;
+
+      if (chatUser) {
+        const thread = state.messages.filter(
+          (m) =>
+            (m.senderId === me.id && m.receiverId === chatUser.id) ||
+            (m.senderId === chatUser.id && m.receiverId === me.id)
+        );
+        const online = isUserOnline(chatUser);
+
+        return `
+          <div class="max-w-lg mx-auto flex flex-col h-[calc(100vh-7.5rem)]">
+            <div class="px-4 py-3 bg-night/95 border-b border-white/10 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <button type="button" onclick="state.selectedChatUserId=null; render();" class="p-1.5 rounded-xl hover:bg-surface text-violet-300 cursor-pointer">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <button type="button" onclick="state.activeTab='profile'; state.viewedProfileUserId='${chatUser.id}'; render();" class="flex items-center gap-2.5 text-left cursor-pointer">
+                  ${renderAvatar(chatUser, 'w-10 h-10 text-sm', true)}
+                  <div>
+                    <div class="text-sm font-bold text-white leading-tight">${escapeHtml(chatUser.username)}</div>
+                    <div class="text-[11px] font-medium ${online ? 'text-emerald-400' : 'text-violet-300/65'}">
+                      ${formatLastSeen(chatUser)}
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div id="chat-scroll-box" class="flex-1 overflow-y-auto px-4 py-4 space-y-2.5">
+              ${
+                thread.length === 0
+                  ? `<div class="h-full flex flex-col items-center justify-center text-center text-xs text-violet-300/65 py-12">
+                       ${escapeHtml(chatUser.username)} ile sohbeti başlatın.
+                     </div>`
+                  : thread
+                      .map((m) => {
+                        const mine = m.senderId === me.id;
+                        return `
+                          <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
+                            <div class="max-w-[78%] px-4 py-2.5 rounded-2xl text-sm ${
+                              mine
+                                ? 'armor-gradient-btn text-white rounded-br-sm shadow-armorSm'
+                                : 'bg-surface border border-white/10 text-purple-50 rounded-bl-sm'
+                            }">
+                              <div class="break-words leading-relaxed">${escapeHtml(m.text)}</div>
+                              <div class="mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? 'text-purple-200/85' : 'text-violet-300/60'}">
+                                <span>${formatClockTime(m.createdAt)}</span>
+                                ${mine ? `<span>${m.read ? '✓✓' : '✓'}</span>` : ''}
+                              </div>
+                            </div>
+                          </div>
+                        `;
+                      })
+                      .join('')
+              }
+            </div>
+
+            <form onsubmit="handleSendMessage(event)" class="p-3 bg-night border-t border-white/10 flex items-center gap-2">
+              <input
+                id="dm-message-input"
+                type="text"
+                autocomplete="off"
+                placeholder="Mesaj yaz..."
+                class="flex-1 px-4 py-3 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500"
+              />
+              <button type="submit" class="px-4 py-3 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer">
+                Gönder
+              </button>
+            </form>
+          </div>
+        `;
+      }
+
+      const contacts = state.users.filter((u) => u.id !== me.id);
+
+      return `
+        <div class="max-w-lg mx-auto px-4 pt-4 pb-24 space-y-3">
+          <h2 class="text-base font-bold text-white px-1">Mesajlar</h2>
+          ${
+            contacts.length === 0
+              ? `<div class="bg-night border border-borderViolet rounded-3xl p-8 text-center text-xs text-violet-300/75">
+                   Henüz mesajlaşabileceğin kayıtlı başka bir hesap yok.
+                 </div>`
+              : contacts
+                  .map((u) => {
+                    const thread = state.messages.filter(
+                      (m) =>
+                        (m.senderId === me.id && m.receiverId === u.id) ||
+                        (m.senderId === u.id && m.receiverId === me.id)
+                    );
+                    const lastMsg = thread[thread.length - 1] || null;
+                    const unread = getUnreadCountForUser(u.id);
+                    const online = isUserOnline(u);
+
+                    return `
+                      <button
+                        type="button"
+                        onclick="openChatWith('${u.id}')"
+                        class="w-full bg-night hover:bg-surface/80 border border-borderViolet rounded-2xl p-3.5 flex items-center justify-between gap-3 text-left transition cursor-pointer"
+                      >
+                        <div class="flex items-center gap-3 min-w-0">
+                          ${renderAvatar(u, 'w-12 h-12 text-base', true)}
+                          <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                              <span class="text-sm font-bold text-white truncate">${escapeHtml(u.username)}</span>
+                              <span class="text-[11px] ${online ? 'text-emerald-400' : 'text-violet-300/55'}">• ${formatLastSeen(u)}</span>
+                            </div>
+                            <div class="text-xs truncate mt-0.5 ${unread > 0 ? 'text-white font-semibold' : 'text-violet-300/70'}">
+                              ${
+                                lastMsg
+                                  ? `${lastMsg.senderId === me.id ? 'Sen: ' : ''}${escapeHtml(lastMsg.text)}`
+                                  : 'Mesaj göndermek için dokun'
+                              }
+                            </div>
+                          </div>
+                        </div>
+
+                        ${
+                          unread > 0
+                            ? `<span class="min-w-[22px] h-[22px] px-1.5 rounded-full bg-fuchsia-500 text-white text-xs font-bold flex items-center justify-center shrink-0">${unread}</span>`
+                            : ''
+                        }
+                      </button>
+                    `;
+                  })
+                  .join('')
+          }
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // SEKME 5: INSTAGRAM TARZI PROFİL EKRANI
+    // =========================================================================
+    function renderProfileView(me) {
+      const targetId = state.viewedProfileUserId || me.id;
+      const profileUser = getUserById(targetId) || me;
+      const isMe = profileUser.id === me.id;
+      const userPosts = state.posts.filter((p) => p.userId === profileUser.id);
+      const followerCount = getFollowerCount(profileUser.id);
+      const followingCount = getFollowingCount(profileUser.id);
+      const following = !isMe && isFollowing(me.id, profileUser.id);
+      const canSeePosts = isMe || !profileUser.isPrivate || following;
+
+      return `
+        <div class="max-w-lg mx-auto pb-24">
+          <div class="px-4 py-3 flex items-center justify-between border-b border-white/10">
+            <div class="flex items-center gap-2">
+              <span class="text-base font-extrabold text-white">${escapeHtml(profileUser.username)}</span>
+              ${
+                profileUser.isPrivate
+                  ? `<svg class="w-4 h-4 text-violet-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
+                  : ''
+              }
+            </div>
+
+            ${
+              isMe
+                ? `<div class="flex items-center gap-2">
+                     <button type="button" onclick="state.activeTab='create'; render();" class="p-2 rounded-xl hover:bg-surface text-white cursor-pointer" title="Yeni Gönderi">
+                       <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                         <rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/>
+                       </svg>
+                     </button>
+                     <button type="button" onclick="state.settingsOpen=true; state.settingsSection='main'; render();" class="p-2 rounded-xl hover:bg-surface text-white cursor-pointer" title="Menü">
+                       <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                         <path d="M4 6h16M4 12h16M4 18h16"/>
+                       </svg>
+                     </button>
+                   </div>`
+                : `<button type="button" onclick="state.viewedProfileUserId='${me.id}'; render();" class="text-xs font-semibold text-purple-300 hover:text-white cursor-pointer">
+                     Profilime Dön
+                   </button>`
+            }
+          </div>
+
+          <div class="px-4 pt-5 pb-4 space-y-4">
+            <div class="flex items-center gap-6">
+              <div class="story-ring rounded-full shrink-0">
+                <div class="bg-obsidian p-1 rounded-full">
+                  ${renderAvatar(profileUser, 'w-20 h-20 text-2xl', !isMe)}
+                </div>
+              </div>
+
+              <div class="flex-1 grid grid-cols-3 text-center">
+                <div>
+                  <div class="text-base font-extrabold text-white">${userPosts.length}</div>
+                  <div class="text-xs text-violet-300/75">Gönderi</div>
+                </div>
+                <div>
+                  <div class="text-base font-extrabold text-white">${followerCount}</div>
+                  <div class="text-xs text-violet-300/75">Takipçi</div>
+                </div>
+                <div>
+                  <div class="text-base font-extrabold text-white">${followingCount}</div>
+                  <div class="text-xs text-violet-300/75">Takip Edilen</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="text-sm font-bold text-white">${escapeHtml(profileUser.displayName || profileUser.username)}</div>
+              ${
+                !isMe
+                  ? `<div class="text-xs ${isUserOnline(profileUser) ? 'text-emerald-400' : 'text-violet-300/65'}">${formatLastSeen(profileUser)}</div>`
+                  : ''
+              }
+              ${
+                profileUser.bio
+                  ? `<p class="text-xs text-purple-100/90 whitespace-pre-line leading-relaxed">${escapeHtml(profileUser.bio)}</p>`
+                  : ''
+              }
+              ${
+                profileUser.website
+                  ? `<div class="text-xs font-medium text-purple-400 truncate">${escapeHtml(profileUser.website)}</div>`
+                  : ''
+              }
+            </div>
+
+            ${
+              isMe
+                ? `<div class="flex items-center gap-2">
+                     <button
+                       type="button"
+                       onclick="openEditProfileModal()"
+                       class="flex-1 py-2.5 rounded-xl bg-surface hover:bg-purple-900/40 border border-white/10 text-xs font-bold text-white transition cursor-pointer"
+                     >
+                       Profili Düzenle
+                     </button>
+                     <button
+                       type="button"
+                       onclick="state.settingsOpen=true; state.settingsSection='main'; render();"
+                       class="px-4 py-2.5 rounded-xl bg-surface hover:bg-purple-900/40 border border-white/10 text-xs font-bold text-white transition cursor-pointer"
+                     >
+                       Ayarlar
+                     </button>
+                   </div>`
+                : `<div class="flex items-center gap-2">
+                     <button
+                       type="button"
+                       onclick="toggleFollow('${profileUser.id}')"
+                       class="flex-1 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                         following
+                           ? 'bg-surface border border-white/15 text-purple-200 hover:bg-white/10'
+                           : 'armor-gradient-btn text-white shadow-armorSm'
+                       }"
+                     >
+                       ${following ? 'Takip Ediliyor' : 'Takip Et'}
+                     </button>
+                     <button
+                       type="button"
+                       onclick="openChatWith('${profileUser.id}')"
+                       class="flex-1 py-2.5 rounded-xl bg-surface hover:bg-purple-900/40 border border-white/10 text-xs font-bold text-white transition cursor-pointer"
+                     >
+                       Mesaj Gönder
+                     </button>
+                   </div>`
+            }
+          </div>
+
+          <div class="border-t border-white/10">
+            ${
+              !canSeePosts
+                ? `<div class="py-12 px-6 text-center space-y-2">
+                     <div class="text-sm font-bold text-white">Bu Hesap Gizli</div>
+                     <p class="text-xs text-violet-300/70">Fotoğraflarını görmek için bu hesabı takip edin.</p>
+                   </div>`
+                : userPosts.length === 0
+                ? `<div class="py-12 px-6 text-center text-xs text-violet-300/65">
+                     Henüz gönderi yok.
+                   </div>`
+                : `<div class="grid grid-cols-3 gap-0.5 pt-0.5">
+                     ${userPosts
+                       .map(
+                         (p) => `
+                         <div class="aspect-square bg-black overflow-hidden relative group">
+                           <img src="${p.imageData}" alt="Gönderi" class="w-full h-full object-cover" />
+                         </div>
+                       `
+                       )
+                       .join('')}
+                   </div>`
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODALLAR: AYARLAR & PROFİLİ DÜZENLE
+    // =========================================================================
+    function renderSettingsModal(me) {
+      return `
+        <div class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this){state.settingsOpen=false; state.settingsSection='main'; render();}">
+          <div class="w-full max-w-md bg-night border border-borderViolet rounded-3xl p-6 shadow-armor animate-pop space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+              <div class="flex items-center gap-2">
+                ${
+                  state.settingsSection !== 'main'
+                    ? `<button type="button" onclick="state.settingsSection='main'; render();" class="p-1.5 rounded-xl hover:bg-surface text-violet-300 cursor-pointer" title="Geri">
+                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+                       </button>`
+                    : ''
+                }
+                <h3 class="text-base font-bold text-white">
+                  ${
+                    state.settingsSection === 'privacy'
+                      ? 'Gizlilik'
+                      : state.settingsSection === 'security'
+                      ? 'Güvenlik'
+                      : 'Ayarlar'
+                  }
+                </h3>
+              </div>
+              <button type="button" onclick="state.settingsOpen=false; state.settingsSection='main'; render();" class="p-1.5 rounded-xl hover:bg-surface text-violet-300 cursor-pointer">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            ${
+              state.settingsSection === 'main'
+                ? `<div class="space-y-2.5">
+                     <button type="button" onclick="state.settingsSection='privacy'; render();" class="w-full flex items-center justify-between p-4 rounded-2xl bg-surface/80 hover:bg-surface border border-white/10 text-left transition cursor-pointer">
+                       <div class="text-sm font-semibold text-white">Gizlilik</div>
+                       <span class="text-xs text-purple-300 font-medium">Şifre Değiştir ›</span>
+                     </button>
+
+                     <button type="button" onclick="state.settingsSection='security'; render();" class="w-full flex items-center justify-between p-4 rounded-2xl bg-surface/80 hover:bg-surface border border-white/10 text-left transition cursor-pointer">
+                       <div class="text-sm font-semibold text-white">Güvenlik</div>
+                       <span class="text-xs text-purple-300 font-medium">${me.isPrivate ? 'Gizli' : 'Açık'} ›</span>
+                     </button>
+
+                     <div class="pt-3">
+                       <button
+                         type="button"
+                         onclick="handleLogout()"
+                         class="w-full py-3 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/35 text-rose-200 text-sm font-semibold transition cursor-pointer"
+                       >
+                         Çıkış Yap
+                       </button>
+                     </div>
+                   </div>`
+                : state.settingsSection === 'privacy'
+                ? `<form onsubmit="handleChangePassword(event)" class="space-y-4">
+                     <div>
+                       <label class="block text-xs font-medium text-violet-300 mb-1.5">Mevcut Şifre</label>
+                       <input id="set-current-pass" type="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500" />
+                     </div>
+                     <div>
+                       <label class="block text-xs font-medium text-violet-300 mb-1.5">Yeni Şifre (En az 5 karakter)</label>
+                       <input id="set-new-pass" type="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500" />
+                     </div>
+                     <div>
+                       <label class="block text-xs font-medium text-violet-300 mb-1.5">Yeni Şifre (Tekrar)</label>
+                       <input id="set-new-pass2" type="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500" />
+                     </div>
+                     <button type="submit" class="w-full py-3 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer">
+                       Şifreyi Güncelle
+                     </button>
+                   </form>`
+                : `<div class="space-y-4">
+                     <div class="p-4 rounded-2xl bg-surface/80 border border-white/10 flex items-center justify-between gap-4">
+                       <div>
+                         <div class="text-sm font-semibold text-white">Hesap Gizliliği</div>
+                         <div class="text-xs text-violet-300/75 mt-0.5">${me.isPrivate ? 'Hesabınız şu an gizli' : 'Hesabınız şu an herkese açık'}</div>
+                       </div>
+                       <button
+                         type="button"
+                         onclick="toggleAccountPrivacy()"
+                         class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                           me.isPrivate
+                             ? 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 hover:bg-emerald-500/30'
+                             : 'armor-gradient-btn text-white shadow-armorSm'
+                         }"
+                       >
+                         ${me.isPrivate ? 'Hesabımı Açık Yap' : 'Hesabımı Gizli Yap'}
+                       </button>
+                     </div>
+                   </div>`
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEditProfileModal(me) {
+      const draftUserPreview = {
+        displayName: state.editDraft.displayName || me.username,
+        username: state.editDraft.username || me.username,
+        avatarPreset: state.editDraft.avatarPreset,
+        avatarImage: state.editDraft.avatarImage
+      };
+
+      return `
+        <div class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this){state.editProfileOpen=false; render();}">
+          <form onsubmit="handleSaveProfile(event)" class="w-full max-w-md bg-night border border-borderViolet rounded-3xl overflow-hidden shadow-armor animate-pop max-h-[92vh] flex flex-col">
+            <div class="px-5 py-3.5 border-b border-white/10 flex items-center justify-between">
+              <button type="button" onclick="state.editProfileOpen=false; render();" class="text-xs font-semibold text-violet-300 hover:text-white cursor-pointer">
+                İptal
+              </button>
+              <h3 class="text-sm font-bold text-white">Profili Düzenle</h3>
+              <button type="submit" class="text-xs font-bold text-purple-400 hover:text-purple-300 cursor-pointer">
+                Bitti
+              </button>
+            </div>
+
+            <div class="p-5 space-y-4 overflow-y-auto">
+              <div class="flex flex-col items-center gap-2.5">
+                ${renderAvatar(draftUserPreview, 'w-20 h-20 text-2xl', false)}
+                <div class="flex items-center gap-3">
+                  <label class="text-xs font-bold text-purple-400 hover:text-purple-300 cursor-pointer">
+                    Fotoğrafı Değiştir
+                    <input type="file" accept="image/*" onchange="handleProfilePhotoUpload(event)" class="hidden" />
+                  </label>
+                  ${
+                    state.editDraft.avatarImage
+                      ? `<button type="button" onclick="state.editDraft.avatarImage=null; render();" class="text-xs font-semibold text-rose-400 hover:text-rose-300 cursor-pointer">
+                           Kaldır
+                         </button>`
+                      : ''
+                  }
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                  ${AVATAR_PRESETS.map(
+                    (p) => `
+                    <button
+                      type="button"
+                      onclick="state.editDraft.avatarPreset='${p.id}'; state.editDraft.avatarImage=null; render();"
+                      class="w-6 h-6 rounded-full bg-gradient-to-br ${p.bg} cursor-pointer ${
+                        !state.editDraft.avatarImage && state.editDraft.avatarPreset === p.id ? 'ring-2 ring-white scale-110' : 'opacity-75'
+                      }"
+                      title="${p.label}"
+                    ></button>
+                  `
+                  ).join('')}
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-[11px] font-medium text-violet-300/75 mb-1">Ad</label>
+                  <input
+                    id="edit-displayname"
+                    type="text"
+                    value="${escapeHtml(state.editDraft.displayName)}"
+                    oninput="state.editDraft.displayName = this.value"
+                    placeholder="Ad"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-medium text-violet-300/75 mb-1">Kullanıcı adı</label>
+                  <input
+                    id="edit-username"
+                    type="text"
+                    required
+                    value="${escapeHtml(state.editDraft.username)}"
+                    oninput="state.editDraft.username = this.value"
+                    placeholder="Kullanıcı adı"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-[11px] font-medium text-violet-300/75">Biyografi</label>
+                    <span id="bio-char-count" class="text-[11px] text-violet-300/55">${(state.editDraft.bio || '').length}/150</span>
+                  </div>
+                  <textarea
+                    id="edit-bio"
+                    rows="3"
+                    maxlength="150"
+                    oninput="state.editDraft.bio = this.value; const c=document.getElementById('bio-char-count'); if(c) c.textContent = this.value.length + '/150';"
+                    placeholder="Kendinden bahset..."
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500 resize-none"
+                  >${escapeHtml(state.editDraft.bio)}</textarea>
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-medium text-violet-300/75 mb-1">İnternet sitesi</label>
+                  <input
+                    id="edit-website"
+                    type="text"
+                    value="${escapeHtml(state.editDraft.website)}"
+                    oninput="state.editDraft.website = this.value"
+                    placeholder="Bağlantı ekle"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-medium text-violet-300/75 mb-1">Cinsiyet</label>
+                  <select
+                    id="edit-gender"
+                    onchange="state.editDraft.gender = this.value"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-sm text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="Kadın" ${state.editDraft.gender === 'Kadın' ? 'selected' : ''}>Kadın</option>
+                    <option value="Erkek" ${state.editDraft.gender === 'Erkek' ? 'selected' : ''}>Erkek</option>
+                    <option value="Belirtmek istemiyorum" ${state.editDraft.gender === 'Belirtmek istemiyorum' ? 'selected' : ''}>Belirtmek istemiyorum</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // ANA RENDER MOTORU
+    // =========================================================================
+    function render() {
+      const root = document.getElementById('app');
+      if (!root) return;
+
+      const me = getCurrentUser();
+      if (!me) {
+        root.innerHTML = renderAuthScreen();
+        return;
+      }
+
+      let mainContent = '';
+      if (state.activeTab === 'feed') {
+        mainContent = renderFeedView(me);
+      } else if (state.activeTab === 'search') {
+        mainContent = renderSearchView(me);
+      } else if (state.activeTab === 'create') {
+        mainContent = renderCreatePostView();
+      } else if (state.activeTab === 'messages') {
+        mainContent = renderMessagesView(me);
+      } else if (state.activeTab === 'profile') {
+        mainContent = renderProfileView(me);
+      }
+
+      root.innerHTML = `
+        ${renderTopBar(me)}
+        <main class="flex-1 w-full">
+          ${mainContent}
+        </main>
+        ${renderBottomNav(me)}
+        ${state.settingsOpen ? renderSettingsModal(me) : ''}
+        ${state.editProfileOpen ? renderEditProfileModal(me) : ''}
+      `;
+    }
+
+    // Başlangıç senkronizasyonu ve ilk çizim
+    render();
+    pullCloudSync();
+  </script>
+</body>
+</html>
