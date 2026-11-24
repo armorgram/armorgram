@@ -66,6 +66,24 @@
   <div id="app" class="min-h-screen flex flex-col"></div>
   <div id="toast-root" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] pointer-events-none flex flex-col items-center gap-2 w-[92%] max-w-sm"></div>
 
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    window.__ARMORGRAM_FIREBASE__ = {
+      initializeApp,
+      getAuth,
+      signInAnonymously,
+      signInWithCustomToken,
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      onSnapshot
+    };
+  </script>
+
   <script>
     // =========================================================================
     // ARMORGRAM - DURUM & KALICI HAFIZA YÖNETİMİ
@@ -76,10 +94,16 @@
       MESSAGES: 'armorgram_messages_v3',
       FOLLOWS: 'armorgram_follows_v3',
       SESSION: 'armorgram_session_v3',
-      SAVED_ACCOUNTS: 'armorgram_saved_accounts_v3'
+      SAVED_ACCOUNTS: 'armorgram_saved_accounts_v3',
+      CLOUD_BLOB_ID: 'armorgram_cloud_blob_id_v3'
     };
 
-    const CLOUD_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/1343891204918231040';
+    const DEFAULT_CLOUD_BLOB_ID = '1343891204918231040';
+    function getCloudEndpoint() {
+      const savedId = localStorage.getItem(STORAGE_KEYS.CLOUD_BLOB_ID) || DEFAULT_CLOUD_BLOB_ID;
+      return `https://jsonblob.com/api/jsonBlob/${savedId}`;
+    }
+    const CLOUD_ENDPOINT = getCloudEndpoint();
     const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('armorgram_realtime_channel') : null;
 
     const AVATAR_PRESETS = [
@@ -267,18 +291,177 @@
     // BULUT GERÇEK ZAMANLI SENKRONİZASYON (FARKLI TELEFONLAR İÇİN)
     // =========================================================================
     let cloudPushTimer = null;
-    function pushCloudSync() {
-      clearTimeout(cloudPushTimer);
-      cloudPushTimer = setTimeout(async () => {
-        try {
-          const payload = {
+    let firestoreDocRef = null;
+    let firestoreUnsubscribe = null;
+
+    async function ensureCloudBlobEndpoint() {
+      let currentId = localStorage.getItem(STORAGE_KEYS.CLOUD_BLOB_ID) || DEFAULT_CLOUD_BLOB_ID;
+      const currentUrl = `https://jsonblob.com/api/jsonBlob/${currentId}`;
+      try {
+        const checkRes = await fetch(currentUrl, { method: 'GET', headers: { Accept: 'application/json' } });
+        if (checkRes.ok) {
+          return currentUrl;
+        }
+      } catch (e) {}
+
+      try {
+        const createRes = await fetch('https://jsonblob.com/api/jsonBlob', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
             users: state.users,
             posts: state.posts,
             messages: state.messages,
             follows: state.follows,
             updatedAt: Date.now()
-          };
-          const res = await fetch(CLOUD_ENDPOINT, {
+          })
+        });
+        if (createRes.ok) {
+          const locationHeader = createRes.headers.get('X-Jsonblob') || createRes.headers.get('Location') || '';
+          const matchId = locationHeader.match(/jsonBlob\/([a-zA-Z0-9_-]+)/);
+          if (matchId && matchId[1]) {
+            localStorage.setItem(STORAGE_KEYS.CLOUD_BLOB_ID, matchId[1]);
+            return `https://jsonblob.com/api/jsonBlob/${matchId[1]}`;
+          }
+        }
+      } catch (e) {}
+
+      return currentUrl;
+    }
+
+    async function initFirestoreRealtimeBridge() {
+      try {
+        const fb = window.__ARMORGRAM_FIREBASE__;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'armorgram-default';
+        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : '';
+        if (!fb || !rawConfig) return;
+
+        const firebaseConfig = typeof rawConfig === 'string' ? JSON.parse(rawConfig) : rawConfig;
+        if (!firebaseConfig || !firebaseConfig.apiKey) return;
+
+        const app = fb.initializeApp(firebaseConfig);
+        const auth = fb.getAuth(app);
+        const db = fb.getFirestore(app);
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await fb.signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await fb.signInAnonymously(auth);
+        }
+
+        if (!auth.currentUser) return;
+        firestoreDocRef = fb.doc(db, 'artifacts', appId, 'public', 'data', 'armorgram_state', 'shared_room');
+
+        if (firestoreUnsubscribe) firestoreUnsubscribe();
+        firestoreUnsubscribe = fb.onSnapshot(
+          firestoreDocRef,
+          (snap) => {
+            if (!snap.exists()) return;
+            applyRemoteSnapshot(snap.data());
+          },
+          () => {}
+        );
+      } catch (err) {}
+    }
+
+    function applyRemoteSnapshot(remote) {
+      if (!remote || typeof remote !== 'object') return;
+      state.cloudConnected = true;
+      let changed = false;
+
+      if (Array.isArray(remote.users)) {
+        const mergedUsers = [...state.users];
+        remote.users.forEach((ru) => {
+          if (!ru || !ru.id) return;
+          const idx = mergedUsers.findIndex((lu) => lu.id === ru.id || lu.username === ru.username);
+          if (idx === -1) {
+            mergedUsers.push(ru);
+            changed = true;
+          } else if ((ru.lastActive || 0) > (mergedUsers[idx].lastActive || 0)) {
+            mergedUsers[idx] = { ...mergedUsers[idx], ...ru };
+            changed = true;
+          }
+        });
+        state.users = mergedUsers;
+      }
+
+      if (Array.isArray(remote.posts)) {
+        const postMap = new Map();
+        state.posts.forEach((p) => postMap.set(p.id, p));
+        remote.posts.forEach((rp) => {
+          if (!rp || !rp.id) return;
+          const localP = postMap.get(rp.id);
+          if (!localP) {
+            postMap.set(rp.id, rp);
+            changed = true;
+          } else if ((rp.comments?.length || 0) > (localP.comments?.length || 0) || (rp.likes?.length || 0) !== (localP.likes?.length || 0)) {
+            postMap.set(rp.id, rp);
+            changed = true;
+          }
+        });
+        state.posts = Array.from(postMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      }
+
+      if (Array.isArray(remote.messages)) {
+        const msgMap = new Map();
+        state.messages.forEach((m) => msgMap.set(m.id, m));
+        remote.messages.forEach((rm) => {
+          if (!rm || !rm.id) return;
+          const localM = msgMap.get(rm.id);
+          if (!localM || (rm.read && !localM.read)) {
+            msgMap.set(rm.id, rm);
+            changed = true;
+          }
+        });
+        state.messages = Array.from(msgMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      }
+
+      if (Array.isArray(remote.follows)) {
+        const followSet = new Set(state.follows.map((f) => `${f.followerId}:${f.followingId}`));
+        remote.follows.forEach((rf) => {
+          const key = `${rf.followerId}:${rf.followingId}`;
+          if (!followSet.has(key)) {
+            state.follows.push(rf);
+            followSet.add(key);
+            changed = true;
+          }
+        });
+      }
+
+      if (changed) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(state.users));
+        localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(state.posts));
+        localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(state.messages));
+        localStorage.setItem(STORAGE_KEYS.FOLLOWS, JSON.stringify(state.follows));
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+        if (!isTyping && !state.settingsOpen && !state.editProfileOpen) {
+          render();
+        }
+      }
+    }
+
+    function pushCloudSync() {
+      clearTimeout(cloudPushTimer);
+      cloudPushTimer = setTimeout(async () => {
+        const payload = {
+          users: state.users,
+          posts: state.posts,
+          messages: state.messages,
+          follows: state.follows,
+          updatedAt: Date.now()
+        };
+
+        try {
+          if (firestoreDocRef && window.__ARMORGRAM_FIREBASE__) {
+            await window.__ARMORGRAM_FIREBASE__.setDoc(firestoreDocRef, payload, { merge: true });
+            state.cloudConnected = true;
+          }
+        } catch (e) {}
+
+        try {
+          const targetUrl = await ensureCloudBlobEndpoint();
+          const res = await fetch(targetUrl, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify(payload)
@@ -287,92 +470,19 @@
         } catch (err) {
           state.cloudConnected = false;
         }
-      }, 300);
+      }, 250);
     }
 
     async function pullCloudSync() {
       try {
-        const res = await fetch(CLOUD_ENDPOINT, {
+        const targetUrl = await ensureCloudBlobEndpoint();
+        const res = await fetch(targetUrl, {
           method: 'GET',
           headers: { Accept: 'application/json' }
         });
         if (!res.ok) return;
         const remote = await res.json();
-        if (!remote || typeof remote !== 'object') return;
-        state.cloudConnected = true;
-
-        let changed = false;
-
-        if (Array.isArray(remote.users)) {
-          const mergedUsers = [...state.users];
-          remote.users.forEach((ru) => {
-            if (!ru || !ru.id) return;
-            const idx = mergedUsers.findIndex((lu) => lu.id === ru.id || lu.username === ru.username);
-            if (idx === -1) {
-              mergedUsers.push(ru);
-              changed = true;
-            } else if ((ru.lastActive || 0) > (mergedUsers[idx].lastActive || 0)) {
-              mergedUsers[idx] = { ...mergedUsers[idx], ...ru };
-              changed = true;
-            }
-          });
-          state.users = mergedUsers;
-        }
-
-        if (Array.isArray(remote.posts)) {
-          const postMap = new Map();
-          state.posts.forEach((p) => postMap.set(p.id, p));
-          remote.posts.forEach((rp) => {
-            if (!rp || !rp.id) return;
-            const localP = postMap.get(rp.id);
-            if (!localP) {
-              postMap.set(rp.id, rp);
-              changed = true;
-            } else if ((rp.comments?.length || 0) > (localP.comments?.length || 0) || (rp.likes?.length || 0) !== (localP.likes?.length || 0)) {
-              postMap.set(rp.id, rp);
-              changed = true;
-            }
-          });
-          state.posts = Array.from(postMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        }
-
-        if (Array.isArray(remote.messages)) {
-          const msgMap = new Map();
-          state.messages.forEach((m) => msgMap.set(m.id, m));
-          remote.messages.forEach((rm) => {
-            if (!rm || !rm.id) return;
-            const localM = msgMap.get(rm.id);
-            if (!localM || (rm.read && !localM.read)) {
-              msgMap.set(rm.id, rm);
-              changed = true;
-            }
-          });
-          state.messages = Array.from(msgMap.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-        }
-
-        if (Array.isArray(remote.follows)) {
-          const followSet = new Set(state.follows.map((f) => `${f.followerId}:${f.followingId}`));
-          remote.follows.forEach((rf) => {
-            const key = `${rf.followerId}:${rf.followingId}`;
-            if (!followSet.has(key)) {
-              state.follows.push(rf);
-              followSet.add(key);
-              changed = true;
-            }
-          });
-        }
-
-        if (changed) {
-          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(state.users));
-          localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(state.posts));
-          localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(state.messages));
-          localStorage.setItem(STORAGE_KEYS.FOLLOWS, JSON.stringify(state.follows));
-          const activeEl = document.activeElement;
-          const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
-          if (!isTyping && !state.settingsOpen && !state.editProfileOpen) {
-            render();
-          }
-        }
+        applyRemoteSnapshot(remote);
       } catch (err) {
         // Sessiz ağ hatası yönetimi
       }
@@ -2005,6 +2115,7 @@
 
     // Başlangıç senkronizasyonu ve ilk çizim
     render();
+    initFirestoreRealtimeBridge();
     pullCloudSync();
   </script>
 </body>
