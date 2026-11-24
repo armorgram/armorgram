@@ -83,6 +83,8 @@
     const STORAGE_KEY = 'armorgram_state_v1';
     const CLOUD_CONFIG_KEY = 'armorgram_supabase_cfg_v1';
     const DEFAULT_ROOM_ID = 'armorgram-main-room';
+    const DEFAULT_SUPABASE_URL = 'https://zuigsqvjtgaudlqvgzdb.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'sb_publishable_w58_KL2tNI4hEwwBD4CWjg_bPx6k7PM';
 
     // Varsayılan uygulama durumu
     const defaultState = {
@@ -101,10 +103,10 @@
       lastSyncAt: 0,
     };
 
-    // Supabase bağlantı ayarları (kullanıcı Ayarlar menüsünden girebilir)
+    // Supabase bağlantı ayarları (varsayılan proje bilgileri gömülüdür, Ayarlar'dan değiştirilebilir)
     let cloudConfig = {
-      url: '',
-      anonKey: '',
+      url: DEFAULT_SUPABASE_URL,
+      anonKey: DEFAULT_SUPABASE_KEY,
       roomId: DEFAULT_ROOM_ID,
     };
 
@@ -207,21 +209,31 @@
         if (raw) {
           const parsed = JSON.parse(raw);
           cloudConfig = {
-            url: String(parsed?.url || '').trim(),
-            anonKey: String(parsed?.anonKey || '').trim(),
+            url: String(parsed?.url || DEFAULT_SUPABASE_URL).trim().replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, ''),
+            anonKey: String(parsed?.anonKey || DEFAULT_SUPABASE_KEY).trim(),
             roomId: String(parsed?.roomId || DEFAULT_ROOM_ID).trim() || DEFAULT_ROOM_ID,
+          };
+        } else {
+          cloudConfig = {
+            url: DEFAULT_SUPABASE_URL,
+            anonKey: DEFAULT_SUPABASE_KEY,
+            roomId: DEFAULT_ROOM_ID,
           };
         }
       } catch (err) {
-        cloudConfig = { url: '', anonKey: '', roomId: DEFAULT_ROOM_ID };
+        cloudConfig = {
+          url: DEFAULT_SUPABASE_URL,
+          anonKey: DEFAULT_SUPABASE_KEY,
+          roomId: DEFAULT_ROOM_ID,
+        };
       }
     }
 
     function saveCloudConfig(nextCfg) {
       try {
         cloudConfig = {
-          url: String(nextCfg?.url || '').trim().replace(/\/+$/, ''),
-          anonKey: String(nextCfg?.anonKey || '').trim(),
+          url: String(nextCfg?.url || DEFAULT_SUPABASE_URL).trim().replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, ''),
+          anonKey: String(nextCfg?.anonKey || DEFAULT_SUPABASE_KEY).trim(),
           roomId: String(nextCfg?.roomId || DEFAULT_ROOM_ID).trim() || DEFAULT_ROOM_ID,
         };
         localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloudConfig));
@@ -1079,13 +1091,13 @@
                   <div class="px-4 py-3 flex items-center justify-between">
                     <button
                       type="button"
-                      onclick="state.activeTab='profile'; state.viewedProfileUserId='${author.id}'; render();"
+                      onclick="state.activeTab='profile'; state.viewedProfileUserId='${escapeHtml(author.id)}'; render();"
                       class="flex items-center gap-2.5 text-left cursor-pointer"
                     >
                       ${renderAvatar(author, 'w-9 h-9 text-xs', true)}
                       <div>
-                        <div class="text-sm font-bold text-white leading-tight">${escapeHtml(author.displayName || author.username)}</div>
-                        <div class="text-[11px] text-violet-300/65">@${escapeHtml(author.username)}${post.location ? ` • ${escapeHtml(post.location)}` : ''}</div>
+                        <p class="text-sm font-bold text-white leading-tight">${escapeHtml(author.displayName || author.username)}</p>
+                        <p class="text-[11px] text-violet-300/70">@${escapeHtml(author.username)}${post.location ? ' · ' + escapeHtml(post.location) : ''}</p>
                       </div>
                     </button>
                     <span class="text-[11px] text-violet-300/60">${formatTimeAgo(post.createdAt)}</span>
@@ -1093,74 +1105,70 @@
 
                   ${
                     post.image
-                      ? `<div class="w-full bg-obsidian border-y border-white/5">
+                      ? `<div class="bg-obsidian border-y border-white/5">
                            <img src="${escapeHtml(post.image)}" alt="Gönderi görseli" class="w-full max-h-[460px] object-cover" onerror="this.style.display='none'" />
                          </div>`
                       : ''
                   }
 
                   <div class="p-4 space-y-3">
-                    <div class="flex items-center gap-4">
-                      <button
-                        type="button"
-                        onclick="toggleLikePost('${post.id}')"
-                        class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer ${
-                          isLiked ? 'text-rose-400' : 'text-violet-200 hover:text-rose-300'
-                        }"
-                      >
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                        </svg>
-                        <span>${likes.length}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onclick="document.getElementById('comment-input-${post.id}')?.focus()"
-                        class="inline-flex items-center gap-1.5 text-xs font-bold text-violet-200 hover:text-purple-300 cursor-pointer"
-                      >
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                        </svg>
-                        <span>${comments.length}</span>
-                      </button>
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onclick="toggleLikePost('${escapeHtml(post.id)}')"
+                          class="px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer ${
+                            isLiked
+                              ? 'bg-fuchsia-950/70 border-fuchsia-500/40 text-fuchsia-300'
+                              : 'bg-surface border-white/10 text-violet-200 hover:text-white'
+                          }"
+                        >
+                          ${isLiked ? '♥' : '♡'} ${likes.length}
+                        </button>
+                        <span class="text-xs text-violet-300/75">${comments.length} yorum</span>
+                      </div>
+                      ${
+                        author.id !== me.id
+                          ? `<button
+                               type="button"
+                               onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(author.id)}'; markMessagesRead('${escapeHtml(author.id)}'); render();"
+                               class="px-3 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-semibold text-purple-200 cursor-pointer"
+                             >
+                               Mesaj
+                             </button>`
+                          : ''
+                      }
                     </div>
 
                     ${
                       post.caption
-                        ? `<p class="text-sm text-violet-50 leading-relaxed">
-                             <span class="font-bold text-white mr-1.5">${escapeHtml(author.username)}</span>
-                             ${escapeHtml(post.caption)}
-                           </p>`
+                        ? `<p class="text-sm text-violet-100 leading-relaxed"><span class="font-bold text-white mr-1.5">${escapeHtml(author.username)}</span>${escapeHtml(post.caption)}</p>`
                         : ''
                     }
 
                     ${
-                      comments.length > 0
+                      comments.length
                         ? `<div class="space-y-1.5 pt-1 border-t border-white/5">
                              ${comments
                                .slice(-3)
                                .map((c) => {
-                                 const cUser = getUserById(c.authorId);
-                                 return `<div class="text-xs text-violet-200/90">
-                                   <span class="font-bold text-white mr-1">${escapeHtml(cUser?.username || 'üye')}</span>
-                                   <span>${escapeHtml(c.text)}</span>
-                                 </div>`;
+                                 const cAuthor = getUserById(c.authorId) || { username: 'kullanici' };
+                                 return `<p class="text-xs text-violet-200"><span class="font-bold text-white mr-1">${escapeHtml(cAuthor.username)}</span>${escapeHtml(c.text)}</p>`;
                                })
                                .join('')}
                            </div>`
                         : ''
                     }
 
-                    <form onsubmit="handleAddComment(event, '${post.id}')" class="flex items-center gap-2 pt-1">
+                    <form onsubmit="handleAddComment(event, '${escapeHtml(post.id)}')" class="flex items-center gap-2 pt-1">
                       <input
-                        id="comment-input-${post.id}"
+                        id="comment-input-${escapeHtml(post.id)}"
                         type="text"
-                        placeholder="Yorum ekle..."
-                        class="flex-1 px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+                        placeholder="Yorum yaz..."
+                        class="flex-1 px-3.5 py-2 rounded-2xl bg-obsidian border border-white/10 text-xs text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
                       />
-                      <button type="submit" class="px-3 py-2 rounded-xl bg-surface hover:bg-borderViolet/70 text-purple-200 text-xs font-bold cursor-pointer">
-                        Yaz
+                      <button type="submit" class="px-3.5 py-2 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer">
+                        Gönder
                       </button>
                     </form>
                   </div>
@@ -1172,83 +1180,63 @@
       `;
     }
 
-    function renderSearchTab(me) {
-      const q = (state.searchQuery || '').trim().toLowerCase().replace(/^@/, '');
-      const filteredUsers = state.users.filter((u) => {
-        if (u.id === me.id) return false;
+    function getFilteredUsers(me) {
+      const q = (state.searchQuery || '').trim().toLowerCase();
+      return state.users.filter((u) => {
+        if (!u || u.id === me.id) return false;
         if (!q) return true;
-        const uname = (u.username || '').toLowerCase();
-        const dname = (u.displayName || '').toLowerCase();
-        return uname.includes(q) || dname.includes(q);
+        return (
+          String(u.username || '').toLowerCase().includes(q) ||
+          String(u.displayName || '').toLowerCase().includes(q)
+        );
       });
-
-      return `
-        <div class="max-w-lg mx-auto px-4 py-4 space-y-4">
-          <div class="flex items-center gap-2">
-            <input
-              id="search-users-input"
-              type="text"
-              value="${escapeHtml(state.searchQuery)}"
-              oninput="state.searchQuery = this.value; updateSearchResultsList();"
-              placeholder="Kullanıcı adı veya isim ara..."
-              class="flex-1 px-4 py-3 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500"
-            />
-            <button
-              type="button"
-              onclick="pullCloudSync(true)"
-              class="px-4 py-3 rounded-2xl bg-surface hover:bg-borderViolet/70 border border-white/10 text-xs font-bold text-violet-100 cursor-pointer"
-            >
-              Yenile
-            </button>
-          </div>
-
-          <div id="search-users-results" class="space-y-2.5">
-            ${renderSearchUsersListHtml(me, filteredUsers)}
-          </div>
-        </div>
-      `;
     }
 
-    function renderSearchUsersListHtml(me, filteredUsers) {
-      if (!filteredUsers || filteredUsers.length === 0) {
-        return `<div class="rounded-3xl bg-night border border-borderViolet p-6 text-center text-xs text-violet-300/75">
-          Eşleşen kullanıcı bulunamadı. Diğer cihazda da kayıtlıysa <strong>Yenile</strong> butonuna bas.
-        </div>`;
+    function renderSearchUserRows(me) {
+      const matches = getFilteredUsers(me);
+      if (!matches.length) {
+        return `
+          <div class="rounded-3xl bg-night border border-borderViolet p-6 text-center">
+            <p class="text-sm font-bold text-white mb-1">Kullanıcı bulunamadı</p>
+            <p class="text-xs text-violet-300/70">Diğer cihazın buluta bağlandığından emin olup "Yenile" ile eşitleyebilirsin.</p>
+          </div>
+        `;
       }
 
-      return filteredUsers
+      return matches
         .map((u) => {
-          const isFollowing = state.follows.some((f) => f.followerId === me.id && f.followingId === u.id);
+          const isFollowing = state.follows.some(
+            (f) => f.followerId === me.id && f.followingId === u.id
+          );
           return `
-            <div class="p-3.5 rounded-2xl bg-night border border-borderViolet flex items-center justify-between gap-3">
+            <div class="rounded-2xl bg-night border border-borderViolet p-3.5 flex items-center justify-between gap-3">
               <button
                 type="button"
-                onclick="state.activeTab='profile'; state.viewedProfileUserId='${u.id}'; render();"
-                class="flex items-center gap-3 text-left min-w-0 cursor-pointer"
+                onclick="state.activeTab='profile'; state.viewedProfileUserId='${escapeHtml(u.id)}'; render();"
+                class="flex items-center gap-3 text-left min-w-0 flex-1 cursor-pointer"
               >
                 ${renderAvatar(u, 'w-11 h-11 text-sm', true)}
                 <div class="min-w-0">
-                  <div class="text-sm font-bold text-white truncate">${escapeHtml(u.displayName || u.username)}</div>
-                  <div class="text-xs text-violet-300/65 truncate">@${escapeHtml(u.username)} • ${formatLastSeen(u)}</div>
+                  <p class="text-sm font-bold text-white truncate">${escapeHtml(u.displayName || u.username)}</p>
+                  <p class="text-xs text-violet-300/70 truncate">@${escapeHtml(u.username)} · ${escapeHtml(formatLastSeen(u))}</p>
                 </div>
               </button>
-
-              <div class="flex items-center gap-1.5 shrink-0">
+              <div class="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onclick="toggleFollow('${u.id}')"
-                  class="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                  onclick="toggleFollow('${escapeHtml(u.id)}')"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
                     isFollowing
-                      ? 'bg-surface text-violet-200 border border-white/10'
-                      : 'armor-gradient-btn text-white shadow-armorSm'
+                      ? 'bg-surface border-purple-500/40 text-purple-200'
+                      : 'armor-gradient-btn border-transparent text-white'
                   }"
                 >
                   ${isFollowing ? 'Takip' : 'Takip Et'}
                 </button>
                 <button
                   type="button"
-                  onclick="state.selectedChatUserId='${u.id}'; state.activeTab='messages'; markMessagesRead('${u.id}'); render(); scrollChatToBottom();"
-                  class="px-3 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/70 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
+                  onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(u.id)}'; markMessagesRead('${escapeHtml(u.id)}'); render();"
+                  class="px-3 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-violet-100 cursor-pointer"
                 >
                   Mesaj
                 </button>
@@ -1261,22 +1249,42 @@
 
     function updateSearchResultsList() {
       const me = getCurrentUser();
-      const box = document.getElementById('search-users-results');
+      const box = document.getElementById('search-results-container');
       if (!me || !box) return;
-      const q = (state.searchQuery || '').trim().toLowerCase().replace(/^@/, '');
-      const filteredUsers = state.users.filter((u) => {
-        if (u.id === me.id) return false;
-        if (!q) return true;
-        const uname = (u.username || '').toLowerCase();
-        const dname = (u.displayName || '').toLowerCase();
-        return uname.includes(q) || dname.includes(q);
-      });
-      box.innerHTML = renderSearchUsersListHtml(me, filteredUsers);
+      box.innerHTML = renderSearchUserRows(me);
+    }
+
+    function renderSearchTab(me) {
+      return `
+        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-4">
+          <div class="flex items-center gap-2">
+            <input
+              id="search-users-input"
+              type="text"
+              value="${escapeHtml(state.searchQuery)}"
+              oninput="state.searchQuery = this.value; updateSearchResultsList();"
+              placeholder="Kullanıcı adı veya isim ara..."
+              class="flex-1 px-4 py-2.5 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+            />
+            <button
+              type="button"
+              onclick="pullCloudSync(true)"
+              class="px-3.5 py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
+            >
+              Yenile
+            </button>
+          </div>
+
+          <div id="search-results-container" class="space-y-2.5">
+            ${renderSearchUserRows(me)}
+          </div>
+        </div>
+      `;
     }
 
     function renderCreateTab() {
       return `
-        <div class="max-w-lg mx-auto px-4 py-4">
+        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4">
           <form onsubmit="handleCreatePost(event)" class="rounded-3xl bg-night border border-borderViolet p-5 space-y-4 shadow-armorSm">
             <h2 class="text-base font-extrabold text-white">Yeni Gönderi Paylaş</h2>
 
@@ -1286,9 +1294,15 @@
                 type="file"
                 accept="image/*"
                 onchange="handleImageFileChange(this, 'post-image-preview')"
-                class="block w-full text-xs text-violet-200 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-surface file:text-purple-200 hover:file:bg-borderViolet/70 cursor-pointer"
+                class="block w-full text-xs text-violet-200 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-500"
               />
-              <img id="post-image-preview" data-image="" alt="Önizleme" class="hidden mt-3 w-full max-h-64 object-cover rounded-2xl border border-white/10" />
+              <img
+                id="post-image-preview"
+                data-image=""
+                src=""
+                alt="Önizleme"
+                class="hidden mt-3 w-full max-h-72 object-cover rounded-2xl border border-white/10"
+              />
             </div>
 
             <div>
@@ -1296,7 +1310,7 @@
               <textarea
                 id="post-caption"
                 rows="3"
-                placeholder="Ne düşünüyorsun?"
+                placeholder="Ne düşünüyorsun veya fotoğrafın hikayesi ne?"
                 class="w-full px-4 py-2.5 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
               ></textarea>
             </div>
@@ -1311,7 +1325,10 @@
               />
             </div>
 
-            <button type="submit" class="w-full py-3 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer">
+            <button
+              type="submit"
+              class="w-full py-3 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer"
+            >
               Paylaş
             </button>
           </form>
@@ -1320,257 +1337,242 @@
     }
 
     function renderMessagesTab(me) {
-      const chatUser = state.selectedChatUserId ? getUserById(state.selectedChatUserId) : null;
+      const selectedUser = getUserById(state.selectedChatUserId);
 
-      if (chatUser) {
-        const thread = state.messages.filter(
-          (m) =>
-            (m.senderId === me.id && m.receiverId === chatUser.id) ||
-            (m.senderId === chatUser.id && m.receiverId === me.id)
-        );
-        const online = isUserOnline(chatUser);
-        const typingEntry = typingStatusMap[chatUser.id];
-        const isOtherTyping =
-          typingEntry && typingEntry.toUserId === me.id && Date.now() - (typingEntry.updatedAt || 0) < 3500;
-
+      if (!selectedUser) {
+        const contacts = state.users.filter((u) => u && u.id !== me.id);
         return `
-          <div class="max-w-lg mx-auto flex flex-col h-[calc(100vh-7.5rem)]">
-            <div class="px-4 py-3 bg-night/95 border-b border-white/10 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <button
-                  type="button"
-                  onclick="state.selectedChatUserId=null; render();"
-                  class="p-1.5 rounded-xl hover:bg-surface text-violet-300 cursor-pointer"
-                >
-                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
-                </button>
-                <button
-                  type="button"
-                  onclick="state.activeTab='profile'; state.viewedProfileUserId='${chatUser.id}'; render();"
-                  class="flex items-center gap-2.5 text-left cursor-pointer"
-                >
-                  ${renderAvatar(chatUser, 'w-10 h-10 text-sm', true)}
-                  <div>
-                    <div class="text-sm font-bold text-white leading-tight">${escapeHtml(chatUser.displayName || chatUser.username)}</div>
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-[11px] font-medium ${online ? 'text-emerald-400' : 'text-violet-300/65'}">
-                        ${formatLastSeen(chatUser)}
-                      </span>
-                      <span id="live-typing-indicator" class="${isOtherTyping ? 'text-[11px] font-semibold text-purple-300 animate-pulse' : 'hidden'}">
-                        ${isOtherTyping ? 'yazıyor...' : ''}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              </div>
+          <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-3">
+            <div class="flex items-center justify-between px-1">
+              <h2 class="text-base font-extrabold text-white">Mesajlar</h2>
+              <button
+                type="button"
+                onclick="pullCloudSync(true)"
+                class="px-3 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
+              >
+                Eşitle
+              </button>
             </div>
 
-            <div id="chat-scroll-box" class="flex-1 overflow-y-auto custom-scroll px-4 py-4 space-y-2.5">
-              ${
-                thread.length === 0
-                  ? `<div class="text-center text-xs text-violet-300/60 py-10">Henüz mesaj yok. İlk mesajı gönder!</div>`
-                  : thread
-                      .map((m) => {
-                        const mine = m.senderId === me.id;
-                        return `
-                          <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
-                            <div class="max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm ${
-                              mine
-                                ? 'armor-gradient-btn text-white rounded-br-sm shadow-armorSm'
-                                : 'bg-night border border-borderViolet text-violet-50 rounded-bl-sm'
-                            }">
-                              <p class="break-words leading-snug">${escapeHtml(m.text)}</p>
-                              <div class="mt-1 flex items-center justify-end gap-1 text-[10px] ${
-                                mine ? 'text-white/80' : 'text-violet-300/55'
-                              }">
-                                <span>${formatTimeAgo(m.createdAt)}</span>
-                                ${mine ? `<span>${m.read ? '✓✓' : '✓'}</span>` : ''}
+            ${
+              !contacts.length
+                ? `<div class="rounded-3xl bg-night border border-borderViolet p-6 text-center">
+                     <p class="text-sm font-bold text-white mb-1">Henüz başka kullanıcı yok</p>
+                     <p class="text-xs text-violet-300/70">Diğer cihazdan kayıt olunduğunda burada görünecek.</p>
+                   </div>`
+                : contacts
+                    .map((u) => {
+                      const thread = state.messages
+                        .filter(
+                          (m) =>
+                            (m.senderId === me.id && m.receiverId === u.id) ||
+                            (m.senderId === u.id && m.receiverId === me.id)
+                        )
+                        .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+                      const lastMsg = thread[thread.length - 1];
+                      const unread = thread.filter((m) => m.senderId === u.id && !m.read).length;
+
+                      return `
+                        <button
+                          type="button"
+                          onclick="state.selectedChatUserId='${escapeHtml(u.id)}'; markMessagesRead('${escapeHtml(u.id)}'); render(); scrollChatToBottom();"
+                          class="w-full rounded-2xl bg-night hover:bg-surface/80 border border-borderViolet p-3.5 flex items-center justify-between gap-3 text-left cursor-pointer"
+                        >
+                          <div class="flex items-center gap-3 min-w-0 flex-1">
+                            ${renderAvatar(u, 'w-11 h-11 text-sm', true)}
+                            <div class="min-w-0 flex-1">
+                              <div class="flex items-center justify-between gap-2">
+                                <p class="text-sm font-bold text-white truncate">${escapeHtml(u.displayName || u.username)}</p>
+                                <span class="text-[11px] text-violet-300/60 shrink-0">${lastMsg ? formatTimeAgo(lastMsg.createdAt) : ''}</span>
                               </div>
+                              <p class="text-xs text-violet-300/75 truncate mt-0.5">
+                                ${lastMsg ? escapeHtml(lastMsg.text) : escapeHtml(formatLastSeen(u))}
+                              </p>
                             </div>
                           </div>
-                        `;
-                      })
-                      .join('')
-              }
-            </div>
-
-            <form onsubmit="handleSendMessage(event)" class="p-3 bg-night border-t border-white/10 flex items-center gap-2">
-              <input
-                id="dm-message-input"
-                type="text"
-                autocomplete="off"
-                oninput="notifyTypingActivity('${chatUser.id}')"
-                placeholder="Mesaj yaz..."
-                class="flex-1 px-4 py-3 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/45 focus:outline-none focus:border-purple-500"
-              />
-              <button type="submit" class="px-4 py-3 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer">
-                Gönder
-              </button>
-            </form>
+                          ${
+                            unread > 0
+                              ? `<span class="min-w-[20px] h-5 px-1.5 rounded-full bg-fuchsia-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">${unread}</span>`
+                              : ''
+                          }
+                        </button>
+                      `;
+                    })
+                    .join('')
+            }
           </div>
         `;
       }
 
-      const otherUsers = state.users.filter((u) => u.id !== me.id);
+      const conversation = state.messages
+        .filter(
+          (m) =>
+            (m.senderId === me.id && m.receiverId === selectedUser.id) ||
+            (m.senderId === selectedUser.id && m.receiverId === me.id)
+        )
+        .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+
       return `
-        <div class="max-w-lg mx-auto px-4 py-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base font-extrabold text-white">Mesajlar</h2>
-            <button
-              type="button"
-              onclick="pullCloudSync(true)"
-              class="text-xs font-bold text-purple-300 hover:text-white cursor-pointer"
-            >
-              Yenile
-            </button>
+        <div class="max-w-lg mx-auto px-3 sm:px-4 py-3 flex flex-col h-[calc(100vh-7.5rem)]">
+          <div class="rounded-2xl bg-night border border-borderViolet px-3.5 py-2.5 flex items-center justify-between mb-3 shrink-0">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <button
+                type="button"
+                onclick="state.selectedChatUserId=null; render();"
+                class="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 text-xs font-bold text-violet-200 cursor-pointer"
+              >
+                Geri
+              </button>
+              ${renderAvatar(selectedUser, 'w-9 h-9 text-xs', true)}
+              <div class="min-w-0">
+                <p class="text-sm font-bold text-white truncate">${escapeHtml(selectedUser.displayName || selectedUser.username)}</p>
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] text-violet-300/70">${escapeHtml(formatLastSeen(selectedUser))}</span>
+                  <span id="live-typing-indicator" class="hidden"></span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          ${
-            otherUsers.length === 0
-              ? `<div class="rounded-3xl bg-night border border-borderViolet p-6 text-center text-xs text-violet-300/75">
-                   Sohbet edebileceğin başka kullanıcı henüz görünmüyor.
-                 </div>`
-              : otherUsers
-                  .map((u) => {
-                    const conv = state.messages
-                      .filter(
-                        (m) =>
-                          (m.senderId === me.id && m.receiverId === u.id) ||
-                          (m.senderId === u.id && m.receiverId === me.id)
-                      )
-                      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-                    const lastMsg = conv[0];
-                    const unread = state.messages.filter((m) => m.senderId === u.id && m.receiverId === me.id && !m.read).length;
-
-                    return `
-                      <button
-                        type="button"
-                        onclick="state.selectedChatUserId='${u.id}'; markMessagesRead('${u.id}'); render(); scrollChatToBottom();"
-                        class="w-full p-3.5 rounded-2xl bg-night hover:bg-surface/80 border border-borderViolet flex items-center justify-between gap-3 text-left cursor-pointer"
-                      >
-                        <div class="flex items-center gap-3 min-w-0">
-                          ${renderAvatar(u, 'w-11 h-11 text-sm', true)}
-                          <div class="min-w-0">
-                            <div class="text-sm font-bold text-white truncate">${escapeHtml(u.displayName || u.username)}</div>
-                            <div class="text-xs text-violet-300/70 truncate">
-                              ${lastMsg ? escapeHtml(lastMsg.text) : `@${escapeHtml(u.username)} ile sohbet başlat`}
+          <div id="chat-scroll-box" class="flex-1 overflow-y-auto custom-scroll space-y-2.5 px-1 pb-2">
+            ${
+              !conversation.length
+                ? `<div class="text-center py-10 text-xs text-violet-300/60">Henüz mesaj yok. İlk mesajı gönder!</div>`
+                : conversation
+                    .map((msg) => {
+                      const mine = msg.senderId === me.id;
+                      return `
+                        <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
+                          <div class="max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                            mine
+                              ? 'armor-gradient-btn text-white rounded-br-sm'
+                              : 'bg-night border border-borderViolet text-violet-100 rounded-bl-sm'
+                          }">
+                            <p class="break-words leading-snug">${escapeHtml(msg.text)}</p>
+                            <div class="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-80">
+                              <span>${formatTimeAgo(msg.createdAt)}</span>
+                              ${mine ? `<span>${msg.read ? '✓✓' : '✓'}</span>` : ''}
                             </div>
                           </div>
                         </div>
+                      `;
+                    })
+                    .join('')
+            }
+          </div>
 
-                        <div class="flex flex-col items-end gap-1 shrink-0">
-                          ${lastMsg ? `<span class="text-[10px] text-violet-300/55">${formatTimeAgo(lastMsg.createdAt)}</span>` : ''}
-                          ${
-                            unread > 0
-                              ? `<span class="px-2 py-0.5 rounded-full bg-fuchsia-600 text-white text-[10px] font-bold">${unread}</span>`
-                              : ''
-                          }
-                        </div>
-                      </button>
-                    `;
-                  })
-                  .join('')
-          }
+          <form onsubmit="handleSendMessage(event)" class="pt-2 flex items-center gap-2 shrink-0">
+            <input
+              id="dm-message-input"
+              type="text"
+              oninput="notifyTypingActivity('${escapeHtml(selectedUser.id)}')"
+              placeholder="Mesaj yaz..."
+              class="flex-1 px-4 py-2.5 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2.5 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer"
+            >
+              Gönder
+            </button>
+          </form>
         </div>
       `;
     }
 
     function renderProfileTab(me) {
-      const targetUser = state.viewedProfileUserId ? getUserById(state.viewedProfileUserId) || me : me;
+      const targetUser = getUserById(state.viewedProfileUserId) || me;
       const isMine = targetUser.id === me.id;
       const userPosts = state.posts.filter((p) => p.authorId === targetUser.id);
       const followersCount = state.follows.filter((f) => f.followingId === targetUser.id).length;
       const followingCount = state.follows.filter((f) => f.followerId === targetUser.id).length;
-      const isFollowing = state.follows.some((f) => f.followerId === me.id && f.followingId === targetUser.id);
+      const isFollowing = state.follows.some(
+        (f) => f.followerId === me.id && f.followingId === targetUser.id
+      );
 
       return `
-        <div class="max-w-lg mx-auto px-4 py-4 space-y-4">
+        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-4">
           <div class="rounded-3xl bg-night border border-borderViolet p-5 space-y-4 shadow-armorSm">
             <div class="flex items-center justify-between gap-3">
               <div class="flex items-center gap-3.5 min-w-0">
                 ${renderAvatar(targetUser, 'w-16 h-16 text-xl', true)}
                 <div class="min-w-0">
                   <h2 class="text-lg font-extrabold text-white truncate">${escapeHtml(targetUser.displayName || targetUser.username)}</h2>
-                  <p class="text-xs text-violet-300/75 truncate">@${escapeHtml(targetUser.username)} • ${formatLastSeen(targetUser)}</p>
+                  <p class="text-xs text-violet-300/75 truncate">@${escapeHtml(targetUser.username)}</p>
+                  <p class="text-[11px] text-violet-300/65 mt-0.5">${escapeHtml(formatLastSeen(targetUser))}</p>
                 </div>
               </div>
-
               ${
                 isMine
                   ? `<button
                        type="button"
-                       onclick="state.settingsOpen = !state.settingsOpen; render();"
-                       class="p-2.5 rounded-2xl bg-surface hover:bg-borderViolet/70 border border-white/10 text-violet-200 cursor-pointer"
+                       onclick="state.settingsOpen=!state.settingsOpen; if(state.settingsOpen) state.editProfileOpen=false; render();"
+                       class="p-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-violet-200 cursor-pointer"
                        title="Ayarlar"
                      >
                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                         <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                         <circle cx="12" cy="12" r="3" />
+                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                        </svg>
                      </button>`
-                  : `<button
-                       type="button"
-                       onclick="state.viewedProfileUserId=null; render();"
-                       class="px-3 py-1.5 rounded-xl bg-surface text-xs font-bold text-violet-200 cursor-pointer"
-                     >
-                       Profilim
-                     </button>`
+                  : ''
               }
             </div>
 
-            ${targetUser.bio ? `<p class="text-xs sm:text-sm text-violet-100/90 leading-relaxed">${escapeHtml(targetUser.bio)}</p>` : ''}
+            ${targetUser.bio ? `<p class="text-xs sm:text-sm text-violet-100 leading-relaxed">${escapeHtml(targetUser.bio)}</p>` : ''}
 
             <div class="grid grid-cols-3 gap-2 pt-2 border-t border-white/10 text-center">
-              <div class="p-2 rounded-2xl bg-obsidian">
-                <div class="text-sm font-extrabold text-white">${userPosts.length}</div>
-                <div class="text-[11px] text-violet-300/65">Gönderi</div>
+              <div class="rounded-2xl bg-obsidian/70 py-2">
+                <p class="text-sm font-extrabold text-white">${userPosts.length}</p>
+                <p class="text-[11px] text-violet-300/70">Gönderi</p>
               </div>
-              <div class="p-2 rounded-2xl bg-obsidian">
-                <div class="text-sm font-extrabold text-white">${followersCount}</div>
-                <div class="text-[11px] text-violet-300/65">Takipçi</div>
+              <div class="rounded-2xl bg-obsidian/70 py-2">
+                <p class="text-sm font-extrabold text-white">${followersCount}</p>
+                <p class="text-[11px] text-violet-300/70">Takipçi</p>
               </div>
-              <div class="p-2 rounded-2xl bg-obsidian">
-                <div class="text-sm font-extrabold text-white">${followingCount}</div>
-                <div class="text-[11px] text-violet-300/65">Takip</div>
+              <div class="rounded-2xl bg-obsidian/70 py-2">
+                <p class="text-sm font-extrabold text-white">${followingCount}</p>
+                <p class="text-[11px] text-violet-300/70">Takip</p>
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
-              ${
-                isMine
-                  ? `<button
+            ${
+              isMine
+                ? `<button
+                     type="button"
+                     onclick="state.editProfileOpen=!state.editProfileOpen; if(state.editProfileOpen) state.settingsOpen=false; render();"
+                     class="w-full py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-white cursor-pointer"
+                   >
+                     Profili Düzenle
+                   </button>`
+                : `<div class="grid grid-cols-2 gap-2">
+                     <button
                        type="button"
-                       onclick="state.editProfileOpen = !state.editProfileOpen; render();"
-                       class="flex-1 py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/70 border border-white/10 text-xs font-bold text-white cursor-pointer"
-                     >
-                       Profili Düzenle
-                     </button>`
-                  : `<button
-                       type="button"
-                       onclick="toggleFollow('${targetUser.id}')"
-                       class="flex-1 py-2.5 rounded-2xl text-xs font-bold cursor-pointer ${
-                         isFollowing ? 'bg-surface text-violet-200 border border-white/10' : 'armor-gradient-btn text-white shadow-armorSm'
+                       onclick="toggleFollow('${escapeHtml(targetUser.id)}')"
+                       class="py-2.5 rounded-2xl text-xs font-bold cursor-pointer ${
+                         isFollowing ? 'bg-surface border border-purple-500/40 text-purple-200' : 'armor-gradient-btn text-white'
                        }"
                      >
                        ${isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
                      </button>
                      <button
                        type="button"
-                       onclick="state.selectedChatUserId='${targetUser.id}'; state.activeTab='messages'; markMessagesRead('${targetUser.id}'); render(); scrollChatToBottom();"
-                       class="flex-1 py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/70 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
+                       onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(targetUser.id)}'; markMessagesRead('${escapeHtml(targetUser.id)}'); render();"
+                       class="py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-white cursor-pointer"
                      >
                        Mesaj Gönder
-                     </button>`
-              }
-            </div>
+                     </button>
+                   </div>`
+            }
           </div>
 
           ${
             isMine && state.editProfileOpen
               ? `<form onsubmit="handleSaveProfile(event)" class="rounded-3xl bg-night border border-borderViolet p-5 space-y-3">
-                   <h3 class="text-sm font-extrabold text-white">Profil Bilgileri</h3>
+                   <h3 class="text-sm font-extrabold text-white">Profili Düzenle</h3>
                    <div>
                      <label class="block text-xs text-violet-200 mb-1">Görünen Ad</label>
-                     <input id="edit-display-name" type="text" value="${escapeHtml(me.displayName || '')}" class="w-full px-3.5 py-2.5 rounded-2xl bg-obsidian border border-white/10 text-sm text-white" />
+                     <input id="edit-display-name" type="text" value="${escapeHtml(me.displayName || '')}" class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
                    </div>
                    <div>
                      <label class="block text-xs text-violet-200 mb-1">Biyografi</label>
@@ -1579,7 +1581,7 @@
                    <div>
                      <label class="block text-xs text-violet-200 mb-1">Profil Fotoğrafı</label>
                      <input type="file" accept="image/*" onchange="handleImageFileChange(this, 'edit-avatar-preview')" class="block w-full text-xs text-violet-200" />
-                     <img id="edit-avatar-preview" data-image="${escapeHtml(me.avatarImage || '')}" src="${escapeHtml(me.avatarImage || '')}" class="${me.avatarImage ? '' : 'hidden'} mt-2 w-16 h-16 rounded-full object-cover" />
+                     <img id="edit-avatar-preview" data-image="${escapeHtml(me.avatarImage || '')}" src="${escapeHtml(me.avatarImage || '')}" alt="Profil önizleme" class="${me.avatarImage ? '' : 'hidden'} mt-2 w-16 h-16 rounded-full object-cover" />
                    </div>
                    <button type="submit" class="w-full py-2.5 rounded-2xl armor-gradient-btn text-white text-xs font-bold cursor-pointer">Kaydet</button>
                  </form>`
@@ -1596,8 +1598,8 @@
                        <input id="cfg-supabase-url" type="text" value="${escapeHtml(cloudConfig.url)}" placeholder="https://xxxx.supabase.co" class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
                      </div>
                      <div>
-                       <label class="block text-xs text-violet-200 mb-1">Supabase Anon Key</label>
-                       <input id="cfg-supabase-key" type="password" value="${escapeHtml(cloudConfig.anonKey)}" placeholder="eyJ..." class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
+                       <label class="block text-xs text-violet-200 mb-1">Supabase Publishable / Anon Key</label>
+                       <input id="cfg-supabase-key" type="password" value="${escapeHtml(cloudConfig.anonKey)}" placeholder="sb_publishable_... veya eyJ..." class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
                      </div>
                      <div>
                        <label class="block text-xs text-violet-200 mb-1">Oda Kodu</label>
