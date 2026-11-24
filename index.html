@@ -3,17 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Amorgram</title>
-  <!-- Tailwind CSS CDN -->
+  <title>Armorgram</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Supabase JS v2 (Realtime WebSocket desteği için) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <!-- Inter Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script>
-    // Tailwind özel renk ve gölge yapılandırması
     tailwind.config = {
       darkMode: 'class',
       theme: {
@@ -36,7 +32,6 @@
     };
   </script>
   <style>
-    /* Genel sayfa ve dokunmatik kaydırma ayarları */
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
@@ -60,102 +55,57 @@
       transform: scale(0.97);
     }
     .custom-scroll::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
     }
     .custom-scroll::-webkit-scrollbar-thumb {
       background: rgba(167, 139, 250, 0.25);
       border-radius: 999px;
     }
-  
-    /* AMORGRAM_PRO_STYLE_V1 — profesyonel, açık ve temiz arayüz */
-    :root { color-scheme: light; --ag-blue:#2563eb; --ag-ink:#172033; --ag-muted:#64748b; --ag-line:#e5eaf2; --ag-bg:#f4f7fb; }
-    html, body { background:#f4f7fb !important; color:var(--ag-ink) !important; font-family:Inter,system-ui,sans-serif !important; }
-    body { min-height:100vh; }
-    #app { width:100%; min-height:100vh; background:#f4f7fb !important; color:var(--ag-ink) !important; }
-    #app header, #app nav { background:rgba(255,255,255,.94) !important; color:var(--ag-ink) !important; border-color:var(--ag-line) !important; box-shadow:0 4px 18px rgba(15,23,42,.045) !important; backdrop-filter:blur(14px); }
-    #app main { color:var(--ag-ink) !important; }
-    #app .bg-obsidian, #app .bg-night, #app .bg-surface { background:#fff !important; }
-    #app .bg-obsidian\/70, #app .bg-night\/90, #app .bg-night\/95 { background:#f8fafc !important; }
-    #app [class*="border-borderViolet"], #app [class*="border-violet"], #app [class*="border-white/"] { border-color:var(--ag-line) !important; }
-    #app .text-white, #app .text-violet-50, #app .text-violet-100, #app .text-violet-200 { color:var(--ag-ink) !important; }
-    #app .text-violet-300, #app .text-violet-300\/70, #app .text-violet-300\/75, #app .text-violet-300\/60, #app .text-violet-200\/70 { color:var(--ag-muted) !important; }
-    #app .armor-gradient-btn { background:linear-gradient(135deg,#2563eb,#3b82f6) !important; color:#fff !important; box-shadow:0 7px 18px rgba(37,99,235,.20) !important; border:0 !important; }
-    #app button { transition:background .18s ease,transform .18s ease,box-shadow .18s ease; }
-    #app button:not(.armor-gradient-btn):hover { background:#eef4ff !important; }
-    #app input:not([type="file"]), #app textarea, #app select { background:#fff !important; color:var(--ag-ink) !important; border:1px solid #dbe3ef !important; border-radius:12px !important; }
-    #app input::placeholder, #app textarea::placeholder { color:#94a3b8 !important; }
-    #app input:focus, #app textarea:focus, #app select:focus { outline:none !important; border-color:#60a5fa !important; box-shadow:0 0 0 3px rgba(59,130,246,.12) !important; }
-    #app img { max-width:100%; }
-    #app .rounded-3xl, #app .rounded-2xl { box-shadow:0 5px 22px rgba(15,23,42,.045); }
-    #app .bg-fuchsia-600 { background:#2563eb !important; }
-    #app .text-purple-200, #app .text-purple-300 { color:#2563eb !important; }
-    #app .border-purple-500\/40 { border-color:#bfdbfe !important; }
-    #toast-container > div { color:#fff !important; }
-    @media (min-width:768px) {
-      #app main > div { max-width:760px; }
-    }
-    @media (max-width:640px) {
-      #app { padding-bottom:env(safe-area-inset-bottom); }
-      #app .rounded-3xl { border-radius:20px !important; }
-    }
-
   </style>
 </head>
 <body class="bg-obsidian text-violet-50 min-h-screen flex flex-col">
-  <!-- Ana uygulama kapsayıcısı -->
   <div id="app" class="flex-1 flex flex-col"></div>
-
-  <!-- Uygulama içi bildirim / toast katmanı -->
   <div id="toast-container" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[92%] max-w-sm pointer-events-none"></div>
 
   <script>
     // =========================================================================
-    // 1. SABİTLER VE VERİ DEPOLAMA ANAHTARLARI
+    // 1. SABİTLER VE DURUM YÖNETİMİ
     // =========================================================================
-    const STORAGE_KEY = 'armorgram_state_v1';
-    const CLOUD_CONFIG_KEY = 'armorgram_supabase_cfg_v1';
-    const DEFAULT_ROOM_ID = 'armorgram-main-room';
-    const DEFAULT_SUPABASE_URL = 'https://zuigsqvjtgaudlqvgzdb.supabase.co';
-    const DEFAULT_SUPABASE_KEY = 'sb_publishable_w58_KL2tNI4hEwwBD4CWjg_bPx6k7PM';
+    const STORAGE_KEY = 'armorgram_clean_state_v1';
+    const SUPABASE_URL = 'https://zuigsqvjtgaudlqvgzdb.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_w58_KL2tNI4hEwwBD4CWjg_bPx6k7PM';
+    const AUTH_EMAIL_DOMAIN = 'armorgram.local';
 
-    // Varsayılan uygulama durumu
     const defaultState = {
-      users: [],
-      posts: [],
-      messages: [],
+      profiles: [],
+      searchResults: [],
+      isSearching: false,
       follows: [],
-      currentUserId: null,
-      activeTab: 'feed', // 'feed' | 'search' | 'create' | 'messages' | 'profile'
+      notifications: [],
+      directMessages: [],
+      sessionUserId: null,
+      activeTab: 'messages', // 'messages' | 'search' | 'notifications' | 'profile'
       searchQuery: '',
       selectedChatUserId: null,
       viewedProfileUserId: null,
-      settingsOpen: false,
       editProfileOpen: false,
-      cloudConnected: false,
-      lastSyncAt: 0,
-    };
-
-    // Supabase bağlantı ayarları (varsayılan proje bilgileri gömülüdür, Ayarlar'dan değiştirilebilir)
-    let cloudConfig = {
-      url: DEFAULT_SUPABASE_URL,
-      anonKey: DEFAULT_SUPABASE_KEY,
-      roomId: DEFAULT_ROOM_ID,
     };
 
     let state = JSON.parse(JSON.stringify(defaultState));
-    let authMode = 'login'; // 'login' | 'register'
-    let typingStatusMap = {};
-    let typingOutTimer = null;
-    let cloudPushTimer = null;
-    let lastSnapshotHash = '';
-    let supabaseRealtimeClient = null;
-    let supabaseRealtimeChannel = null;
-    let activeRealtimeKey = '';
-    const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('armorgram_sync_channel') : null;
+    let authMode = 'login';
+    let sbClient = null;
+    let realtimeSubscription = null;
+    let activeRealtimeUserId = '';
+    let typingChannel = null;
+    let activeTypingPeerId = null;
+    let peerIsTyping = false;
+    let typingHideTimer = null;
+    let typingBroadcastTimer = null;
+    let searchDebounceTimer = null;
 
     // =========================================================================
-    // 2. YARDIMCI FONKSİYONLAR (GÜVENLİK, TARİH, BİLDİRİM)
+    // 2. YARDIMCI FONKSİYONLAR
     // =========================================================================
     function showToast(message, type = 'info') {
       try {
@@ -175,10 +125,8 @@
           item.style.opacity = '0';
           item.style.transform = 'translateY(-6px)';
           setTimeout(() => item.remove(), 220);
-        }, 2600);
-      } catch (err) {
-        // Bildirim hatası uygulamayı durdurmamalı
-      }
+        }, 2400);
+      } catch (err) {}
     }
 
     function escapeHtml(value) {
@@ -194,90 +142,69 @@
       return String(raw || '')
         .trim()
         .toLowerCase()
+        .replace(/^@+/, '')
         .replace(/[^a-z0-9._]/g, '');
     }
 
+    function usernameToAuthEmail(username) {
+      return `${normalizeUsername(username)}@${AUTH_EMAIL_DOMAIN}`;
+    }
+
     function formatTimeAgo(timestamp) {
-      const ts = Number(timestamp || 0);
-      if (!ts) return '';
+      const ts = typeof timestamp === 'string' ? Date.parse(timestamp) : Number(timestamp || 0);
+      if (!ts || Number.isNaN(ts)) return '';
       const diffSec = Math.max(1, Math.floor((Date.now() - ts) / 1000));
       if (diffSec < 60) return `${diffSec}sn`;
       const diffMin = Math.floor(diffSec / 60);
       if (diffMin < 60) return `${diffMin}dk`;
       const diffHr = Math.floor(diffMin / 60);
       if (diffHr < 24) return `${diffHr}sa`;
-      const diffDay = Math.floor(diffHr / 24);
-      return `${diffDay}g`;
+      return `${Math.floor(diffHr / 24)}g`;
     }
 
     function getCurrentUser() {
-      if (!state.currentUserId) return null;
-      return state.users.find((u) => u.id === state.currentUserId) || null;
+      if (!state.sessionUserId) return null;
+      return state.profiles.find((p) => p.id === state.sessionUserId) || null;
     }
 
     function getUserById(userId) {
       if (!userId) return null;
-      return state.users.find((u) => u.id === userId) || null;
+      return (
+        state.profiles.find((p) => p.id === userId) ||
+        state.searchResults.find((p) => p.id === userId) ||
+        null
+      );
     }
 
     function isUserOnline(user) {
       if (!user) return false;
-      const last = Number(user.lastActive || 0);
-      return Date.now() - last < 25000;
+      const ts = typeof user.last_active === 'string' ? Date.parse(user.last_active) : Number(user.last_active || 0);
+      if (!ts || Number.isNaN(ts)) return false;
+      return Date.now() - ts < 30000;
     }
 
     function formatLastSeen(user) {
       if (!user) return 'Çevrimdışı';
       if (isUserOnline(user)) return 'Çevrimiçi';
-      const last = Number(user.lastActive || 0);
-      if (!last) return 'Çevrimdışı';
-      return `Son görülme: ${formatTimeAgo(last)} önce`;
+      const ts = typeof user.last_active === 'string' ? Date.parse(user.last_active) : Number(user.last_active || 0);
+      if (!ts || Number.isNaN(ts)) return 'Çevrimdışı';
+      return `Son görülme: ${formatTimeAgo(ts)} önce`;
     }
 
-    // =========================================================================
-    // 3. YEREL DEPOLAMA VE SUPABASE BULUT SENKRONİZASYONU
-    // =========================================================================
-    function loadCloudConfig() {
-      try {
-        const raw = localStorage.getItem(CLOUD_CONFIG_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          cloudConfig = {
-            url: String(parsed?.url || DEFAULT_SUPABASE_URL).trim().replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, ''),
-            anonKey: String(parsed?.anonKey || DEFAULT_SUPABASE_KEY).trim(),
-            roomId: String(parsed?.roomId || DEFAULT_ROOM_ID).trim() || DEFAULT_ROOM_ID,
-          };
-        } else {
-          cloudConfig = {
-            url: DEFAULT_SUPABASE_URL,
-            anonKey: DEFAULT_SUPABASE_KEY,
-            roomId: DEFAULT_ROOM_ID,
-          };
-        }
-      } catch (err) {
-        cloudConfig = {
-          url: DEFAULT_SUPABASE_URL,
-          anonKey: DEFAULT_SUPABASE_KEY,
-          roomId: DEFAULT_ROOM_ID,
-        };
+    function getSupabaseClient() {
+      if (!sbClient && typeof window.supabase !== 'undefined') {
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+          },
+          realtime: {
+            params: { eventsPerSecond: 10 },
+          },
+        });
       }
-    }
-
-    function saveCloudConfig(nextCfg) {
-      try {
-        cloudConfig = {
-          url: String(nextCfg?.url || DEFAULT_SUPABASE_URL).trim().replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, ''),
-          anonKey: String(nextCfg?.anonKey || DEFAULT_SUPABASE_KEY).trim(),
-          roomId: String(nextCfg?.roomId || DEFAULT_ROOM_ID).trim() || DEFAULT_ROOM_ID,
-        };
-        localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloudConfig));
-      } catch (err) {
-        // Depolama hatası yoksayılır
-      }
-    }
-
-    function hasCloudConfigured() {
-      return Boolean(cloudConfig.url && cloudConfig.anonKey);
+      return sbClient;
     }
 
     function loadLocalState() {
@@ -288,10 +215,10 @@
         state = {
           ...JSON.parse(JSON.stringify(defaultState)),
           ...parsed,
-          users: Array.isArray(parsed?.users) ? parsed.users : [],
-          posts: Array.isArray(parsed?.posts) ? parsed.posts : [],
-          messages: Array.isArray(parsed?.messages) ? parsed.messages : [],
+          profiles: Array.isArray(parsed?.profiles) ? parsed.profiles : [],
           follows: Array.isArray(parsed?.follows) ? parsed.follows : [],
+          notifications: Array.isArray(parsed?.notifications) ? parsed.notifications : [],
+          directMessages: Array.isArray(parsed?.directMessages) ? parsed.directMessages : [],
         };
       } catch (err) {
         state = JSON.parse(JSON.stringify(defaultState));
@@ -300,283 +227,192 @@
 
     function persistAll() {
       try {
-        const toSave = {
-          users: state.users,
-          posts: state.posts,
-          messages: state.messages,
-          follows: state.follows,
-          currentUserId: state.currentUserId,
-          activeTab: state.activeTab,
-          selectedChatUserId: state.selectedChatUserId,
-          viewedProfileUserId: state.viewedProfileUserId,
-          lastSyncAt: state.lastSyncAt,
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      } catch (err) {
-        // Kota dolduğunda uygulamayı kırmamak için sessiz geç
-      }
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            profiles: state.profiles,
+            follows: state.follows,
+            notifications: state.notifications,
+            directMessages: state.directMessages,
+            sessionUserId: state.sessionUserId,
+            activeTab: state.activeTab,
+            selectedChatUserId: state.selectedChatUserId,
+            viewedProfileUserId: state.viewedProfileUserId,
+          })
+        );
+      } catch (err) {}
     }
 
-    function getSnapshotHash(payload) {
+    // =========================================================================
+    // 3. SUPABASE VERİ ÇEKME VE GERÇEK ZAMANLI ABONELİKLER
+    // =========================================================================
+    async function refreshAllDatabaseData() {
+      const client = getSupabaseClient();
+      if (!client || !state.sessionUserId) return;
+
       try {
-        return JSON.stringify(payload || {});
-      } catch (err) {
-        return String(Date.now());
-      }
-    }
+        const [profilesRes, followsRes, notifRes, messagesRes] = await Promise.all([
+          client
+            .from('profiles')
+            .select('id,username,display_name,bio,avatar_image,last_active,created_at')
+            .order('created_at', { ascending: false })
+            .limit(200),
+          client
+            .from('follows')
+            .select('id,follower_id,following_id,created_at'),
+          client
+            .from('notifications')
+            .select('id,user_id,actor_id,type,text,read_at,created_at')
+            .eq('user_id', state.sessionUserId)
+            .order('created_at', { ascending: false })
+            .limit(50),
+          client
+            .from('direct_messages')
+            .select('id,sender_id,receiver_id,body,read_at,created_at')
+            .or(`sender_id.eq.${state.sessionUserId},receiver_id.eq.${state.sessionUserId}`)
+            .order('created_at', { ascending: true }),
+        ]);
 
-    function mergeCollectionById(localArr, remoteArr, sortDescBy = 'createdAt') {
-      const map = new Map();
-      (Array.isArray(localArr) ? localArr : []).forEach((item) => {
-        if (item && item.id) map.set(item.id, item);
-      });
-      (Array.isArray(remoteArr) ? remoteArr : []).forEach((item) => {
-        if (!item || !item.id) return;
-        const prev = map.get(item.id);
-        if (!prev) {
-          map.set(item.id, item);
-        } else {
-          const prevTs = Number(prev.updatedAt || prev.lastActive || prev.createdAt || 0);
-          const nextTs = Number(item.updatedAt || item.lastActive || item.createdAt || 0);
-          map.set(item.id, nextTs >= prevTs ? { ...prev, ...item } : { ...item, ...prev });
+        if (!profilesRes.error && Array.isArray(profilesRes.data)) {
+          state.profiles = profilesRes.data;
         }
-      });
-      const list = Array.from(map.values());
-      if (sortDescBy) {
-        list.sort((a, b) => Number(b?.[sortDescBy] || 0) - Number(a?.[sortDescBy] || 0));
-      }
-      return list;
-    }
-
-    function mergeFollows(localFollows, remoteFollows) {
-      const seen = new Set();
-      const result = [];
-      [...(Array.isArray(remoteFollows) ? remoteFollows : []), ...(Array.isArray(localFollows) ? localFollows : [])].forEach(
-        (f) => {
-          if (!f || !f.followerId || !f.followingId) return;
-          const key = `${f.followerId}::${f.followingId}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            result.push({ followerId: f.followerId, followingId: f.followingId });
-          }
+        if (!followsRes.error && Array.isArray(followsRes.data)) {
+          state.follows = followsRes.data;
         }
-      );
-      return result;
-    }
-
-    function applyRemoteSnapshot(remotePayload) {
-      if (!remotePayload || typeof remotePayload !== 'object') return;
-      try {
-        const beforeMsgCount = state.messages.length;
-        const beforeUserCount = state.users.length;
-        const beforePostCount = state.posts.length;
-
-        state.users = mergeCollectionById(state.users, remotePayload.users, 'lastActive');
-        state.posts = mergeCollectionById(state.posts, remotePayload.posts, 'createdAt');
-        state.messages = mergeCollectionById(state.messages, remotePayload.messages, 'createdAt');
-        state.follows = mergeFollows(state.follows, remotePayload.follows);
-
-        if (remotePayload.typing && typeof remotePayload.typing === 'object') {
-          const me = getCurrentUser();
-          Object.entries(remotePayload.typing).forEach(([senderId, info]) => {
-            if (me && senderId === me.id) return;
-            if (info && Date.now() - Number(info.updatedAt || 0) < 4000) {
-              typingStatusMap[senderId] = info;
-            }
-          });
+        if (!notifRes.error && Array.isArray(notifRes.data)) {
+          state.notifications = notifRes.data;
+        }
+        if (!messagesRes.error && Array.isArray(messagesRes.data)) {
+          state.directMessages = messagesRes.data;
         }
 
-        const nextHash = getSnapshotHash({
-          users: state.users,
-          posts: state.posts,
-          messages: state.messages,
-          follows: state.follows,
-        });
-
-        const structureChanged =
-          nextHash !== lastSnapshotHash ||
-          state.messages.length !== beforeMsgCount ||
-          state.users.length !== beforeUserCount ||
-          state.posts.length !== beforePostCount;
-
-        lastSnapshotHash = nextHash;
-        state.lastSyncAt = Date.now();
         persistAll();
 
-        if (state.activeTab === 'messages' && state.selectedChatUserId) {
-          markMessagesRead(state.selectedChatUserId, false);
+        if (state.selectedChatUserId) {
+          await markMessagesRead(state.selectedChatUserId);
         }
 
-        const activeEl = document.activeElement;
-        const isTypingInInput =
-          activeEl &&
-          (activeEl.id === 'search-users-input' ||
-            activeEl.id === 'dm-message-input' ||
-            String(activeEl.id || '').startsWith('comment-input-'));
-
-        if (structureChanged && !isTypingInInput) {
-          render();
-          if (state.activeTab === 'messages' && state.selectedChatUserId) {
-            scrollChatToBottom();
-          }
-        } else if (state.activeTab === 'search') {
-          updateSearchResultsList();
-        }
+        render();
 
         if (state.activeTab === 'messages' && state.selectedChatUserId) {
-          updateLiveTypingIndicator(state.selectedChatUserId);
+          scrollChatToBottom();
         }
-      } catch (err) {
-        // Anlık paket işleme hatası uygulamayı durdurmamalı
-      }
+      } catch (err) {}
     }
 
-    async function pushCloudSync(immediate = false) {
-      if (!hasCloudConfigured()) return;
-      const runPush = async () => {
-        try {
-          const payload = {
-            users: state.users,
-            posts: state.posts,
-            messages: state.messages,
-            follows: state.follows,
-            typing: typingStatusMap,
-            updatedAt: Date.now(),
-          };
-          const endpoint = `${cloudConfig.url}/rest/v1/armorgram_rooms?on_conflict=room_id`;
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              apikey: cloudConfig.anonKey,
-              Authorization: `Bearer ${cloudConfig.anonKey}`,
-              'Content-Type': 'application/json',
-              Prefer: 'resolution=merge-duplicates,return=minimal',
-            },
-            body: JSON.stringify([
-              {
-                room_id: cloudConfig.roomId || DEFAULT_ROOM_ID,
-                payload,
-                updated_at: new Date().toISOString(),
-              },
-            ]),
-          });
-          state.cloudConnected = res.ok;
-          if (bc) {
-            bc.postMessage({ type: 'SYNC_STATE', payload });
-          }
-        } catch (err) {
-          state.cloudConnected = false;
-        }
-      };
+    function setupRealtimeSubscriptions() {
+      const client = getSupabaseClient();
+      if (!client || !state.sessionUserId) return;
+      if (activeRealtimeUserId === state.sessionUserId && realtimeSubscription) return;
 
-      if (immediate) {
-        clearTimeout(cloudPushTimer);
-        await runPush();
-      } else {
-        clearTimeout(cloudPushTimer);
-        cloudPushTimer = setTimeout(runPush, 350);
-      }
-    }
-
-    async function pullCloudSync(notifyUser = false) {
-      if (!hasCloudConfigured()) {
-        if (notifyUser) {
-          showToast('Bulut için Profil > Ayarlar kısmından Supabase URL ve Key gir.', 'info');
-        }
-        return;
-      }
-      try {
-        const room = encodeURIComponent(cloudConfig.roomId || DEFAULT_ROOM_ID);
-        const endpoint = `${cloudConfig.url}/rest/v1/armorgram_rooms?room_id=eq.${room}&select=payload,updated_at`;
-        const res = await fetch(endpoint, {
-          method: 'GET',
-          headers: {
-            apikey: cloudConfig.anonKey,
-            Authorization: `Bearer ${cloudConfig.anonKey}`,
-          },
-        });
-        if (!res.ok) {
-          state.cloudConnected = false;
-          if (notifyUser) showToast('Supabase verisi alınamadı.', 'error');
-          return;
-        }
-        const rows = await res.json();
-        state.cloudConnected = true;
-        if (Array.isArray(rows) && rows[0]?.payload) {
-          applyRemoteSnapshot(rows[0].payload);
-          if (notifyUser) showToast('Bulut ile eşitlendi.', 'success');
-        } else if (notifyUser) {
-          showToast('Oda hazır, ilk veriler gönderiliyor.', 'info');
-          await pushCloudSync(true);
-        }
-      } catch (err) {
-        state.cloudConnected = false;
-        if (notifyUser) showToast('Bağlantı hatası oluştu.', 'error');
-      }
-    }
-
-    function initSupabaseRealtimeBridge() {
-      if (!hasCloudConfigured() || typeof window.supabase === 'undefined') return;
-      const key = `${cloudConfig.url}::${cloudConfig.anonKey}::${cloudConfig.roomId}`;
-      if (key === activeRealtimeKey && supabaseRealtimeChannel) return;
-
-      // Sandbox / Canvas ortamlarında WebSocket erişimi kısıtlıysa SecurityError üretmeden HTTP polling'e geç
       const isCanvasSandbox =
         window.location.protocol === 'about:' ||
         window.location.protocol === 'blob:' ||
         window.location.protocol === 'data:' ||
         typeof window.WebSocket === 'undefined';
 
-      if (isCanvasSandbox) {
-        return;
-      }
+      if (isCanvasSandbox) return;
 
       try {
-        // Bazı sandbox iframe'lerde WebSocket kurucu fonksiyonuna erişim bile SecurityError fırlatabilir
-        const testWsProbe = typeof WebSocket === 'function' ? WebSocket : null;
-        if (!testWsProbe) return;
-
-        if (supabaseRealtimeChannel && supabaseRealtimeClient) {
-          supabaseRealtimeClient.removeChannel(supabaseRealtimeChannel);
+        if (realtimeSubscription) {
+          client.removeChannel(realtimeSubscription);
+          realtimeSubscription = null;
         }
-        supabaseRealtimeClient = window.supabase.createClient(cloudConfig.url, cloudConfig.anonKey, {
-          realtime: { params: { eventsPerSecond: 10 } },
-        });
-        const roomId = cloudConfig.roomId || DEFAULT_ROOM_ID;
-        supabaseRealtimeChannel = supabaseRealtimeClient
-          .channel(`armorgram-room-${roomId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'armorgram_rooms',
-              filter: `room_id=eq.${roomId}`,
-            },
-            (evt) => {
-              const nextPayload = evt?.new?.payload;
-              if (nextPayload) {
-                state.cloudConnected = true;
-                applyRemoteSnapshot(nextPayload);
+
+        realtimeSubscription = client
+          .channel(`armorgram-live-${state.sessionUserId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            refreshAllDatabaseData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'follows' }, () => {
+            refreshAllDatabaseData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+            const row = payload.new || payload.old;
+            if (row && row.user_id === state.sessionUserId) {
+              refreshAllDatabaseData();
+            }
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_messages' }, (payload) => {
+            const row = payload.new || payload.old;
+            if (row && (row.sender_id === state.sessionUserId || row.receiver_id === state.sessionUserId)) {
+              refreshAllDatabaseData();
+            }
+          })
+          .subscribe();
+
+        activeRealtimeUserId = state.sessionUserId;
+        setupTypingBroadcastChannel(client);
+      } catch (err) {}
+    }
+
+    function setupTypingBroadcastChannel(client) {
+      if (!client || !state.sessionUserId) return;
+      try {
+        if (typingChannel) {
+          client.removeChannel(typingChannel);
+          typingChannel = null;
+        }
+        typingChannel = client
+          .channel('armorgram-typing-global')
+          .on('broadcast', { event: 'typing' }, ({ payload }) => {
+            if (!payload) return;
+            if (payload.senderId !== state.sessionUserId && payload.receiverId === state.sessionUserId) {
+              peerIsTyping = Boolean(payload.isTyping);
+              updateLiveTypingIndicator();
+              clearTimeout(typingHideTimer);
+              if (peerIsTyping) {
+                typingHideTimer = setTimeout(() => {
+                  peerIsTyping = false;
+                  updateLiveTypingIndicator();
+                }, 2500);
               }
             }
-          )
-          .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-              state.cloudConnected = true;
-            }
-          });
-        activeRealtimeKey = key;
-      } catch (err) {
-        // Kısıtlı ortamlarda WebSocket SecurityError yutulur ve 2s HTTP senkronizasyonu devrede kalır
-      }
+          })
+          .subscribe();
+      } catch (err) {}
+    }
+
+    function notifyTypingActivity(targetUserId) {
+      if (!typingChannel || !state.sessionUserId || !targetUserId) return;
+      try {
+        typingChannel.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { senderId: state.sessionUserId, receiverId: targetUserId, isTyping: true },
+        });
+        clearTimeout(typingBroadcastTimer);
+        typingBroadcastTimer = setTimeout(() => {
+          try {
+            typingChannel?.send({
+              type: 'broadcast',
+              event: 'typing',
+              payload: { senderId: state.sessionUserId, receiverId: targetUserId, isTyping: false },
+            });
+          } catch (e) {}
+        }, 1800);
+      } catch (err) {}
+    }
+
+    function updateLiveTypingIndicator() {
+      const el = document.getElementById('live-typing-indicator');
+      if (!el) return;
+      const show = peerIsTyping && state.selectedChatUserId && activeTypingPeerId === state.selectedChatUserId;
+      el.textContent = show ? 'yazıyor...' : '';
+      el.className = show ? 'text-[11px] font-semibold text-purple-300 animate-pulse' : 'hidden';
     }
 
     // =========================================================================
-    // 4. KİMLİK DOĞRULAMA, VARLIK VE ANLIK MESAJLAŞMA
+    // 4. AUTH (GİRİŞ YAP / KAYIT OL / ÇIKIŞ YAP)
     // =========================================================================
-    function handleAuthSubmit(event) {
+    async function handleAuthSubmit(event) {
       if (event) event.preventDefault();
+      const client = getSupabaseClient();
+      if (!client) {
+        showToast('Bağlantı hazır değil.', 'error');
+        return;
+      }
+
       try {
         const rawUsername = document.getElementById('auth-username')?.value || '';
         const rawFullName = document.getElementById('auth-fullname')?.value || '';
@@ -584,172 +420,353 @@
         const username = normalizeUsername(rawUsername);
         const fullName = rawFullName.trim();
 
-        if (!username) {
-          showToast('Geçerli bir kullanıcı adı gir.', 'error');
+        if (!username || username.length < 3) {
+          showToast('Kullanıcı adı en az 3 karakter olmalı (a-z, 0-9, ., _).', 'error');
           return;
         }
-        if (!password || password.length < 3) {
-          showToast('Şifre en az 3 karakter olmalı.', 'error');
+        if (!password || password.length < 6) {
+          showToast('Şifre en az 6 karakter olmalı.', 'error');
           return;
         }
 
-        const existingUser = state.users.find((u) => normalizeUsername(u.username) === username);
+        const authEmail = usernameToAuthEmail(username);
 
         if (authMode === 'register') {
           if (!fullName) {
             showToast('Lütfen Ad Soyad gir.', 'error');
             return;
           }
-          if (existingUser) {
-            showToast('Bu kullanıcı adı zaten kayıtlı. Giriş Yap sekmesini kullan.', 'error');
+
+          const { data: existing } = await client
+            .from('profiles')
+            .select('id')
+            .ilike('username', username)
+            .maybeSingle();
+
+          if (existing) {
+            showToast('Bu kullanıcı adı zaten alınmış.', 'error');
             return;
           }
 
-          const newUser = {
-            id: 'usr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-            username,
-            displayName: fullName,
+          const { data: signUpData, error: signUpError } = await client.auth.signUp({
+            email: authEmail,
             password,
-            bio: '',
-            avatarImage: '',
-            lastActive: Date.now(),
-          };
-          state.users.push(newUser);
-          state.currentUserId = newUser.id;
-          state.activeTab = 'feed';
-          authMode = 'login';
-          persistAll();
-          pushCloudSync(true);
-          showToast(`Kayıt başarılı! Hoş geldin, ${newUser.displayName}!`, 'success');
-          render();
+            options: {
+              data: { username, display_name: fullName },
+            },
+          });
+
+          if (signUpError) {
+            showToast(
+              signUpError.message.toLowerCase().includes('already')
+                ? 'Bu kullanıcı adı zaten kayıtlı.'
+                : signUpError.message,
+              'error'
+            );
+            return;
+          }
+
+          let userId = signUpData?.user?.id || null;
+          if (!signUpData?.session) {
+            const { data: loginData } = await client.auth.signInWithPassword({ email: authEmail, password });
+            userId = loginData?.user?.id || userId;
+          }
+
+          if (userId) {
+            state.sessionUserId = userId;
+            await client.from('profiles').upsert(
+              {
+                id: userId,
+                username,
+                display_name: fullName,
+                last_active: new Date().toISOString(),
+              },
+              { onConflict: 'id' }
+            );
+            authMode = 'login';
+            state.activeTab = 'search';
+            setupRealtimeSubscriptions();
+            await refreshAllDatabaseData();
+            showToast(`Hoş geldin, ${fullName}!`, 'success');
+          }
           return;
         }
 
-        if (!existingUser) {
-          showToast('Kullanıcı bulunamadı. Önce Kayıt Ol seçeneğinden hesap oluştur.', 'error');
+        const { data: loginData, error: loginError } = await client.auth.signInWithPassword({
+          email: authEmail,
+          password,
+        });
+
+        if (loginError || !loginData?.user) {
+          showToast('Kullanıcı adı veya şifre hatalı.', 'error');
           return;
         }
 
-        if (existingUser.password && existingUser.password !== password) {
-          showToast('Şifre hatalı.', 'error');
-          return;
-        }
+        state.sessionUserId = loginData.user.id;
+        await client
+          .from('profiles')
+          .update({ last_active: new Date().toISOString() })
+          .eq('id', loginData.user.id);
 
-        existingUser.lastActive = Date.now();
-        state.currentUserId = existingUser.id;
-        state.activeTab = 'feed';
-        persistAll();
-        pushCloudSync(true);
-        showToast(`Hoş geldin, ${existingUser.displayName || existingUser.username}!`, 'success');
-        render();
+        state.activeTab = 'messages';
+        setupRealtimeSubscriptions();
+        await refreshAllDatabaseData();
+        showToast('Giriş yapıldı.', 'success');
       } catch (err) {
-        showToast('İşlem sırasında hata oluştu.', 'error');
+        showToast('Giriş sırasında hata oluştu.', 'error');
       }
     }
 
-    function handleLogout() {
-      state.currentUserId = null;
+    async function handleLogout() {
+      const client = getSupabaseClient();
+      try {
+        if (realtimeSubscription && client) {
+          client.removeChannel(realtimeSubscription);
+          realtimeSubscription = null;
+        }
+        if (typingChannel && client) {
+          client.removeChannel(typingChannel);
+          typingChannel = null;
+        }
+        activeRealtimeUserId = '';
+        if (client) await client.auth.signOut();
+      } catch (err) {}
+
+      state.sessionUserId = null;
       state.selectedChatUserId = null;
       state.viewedProfileUserId = null;
-      state.settingsOpen = false;
+      state.editProfileOpen = false;
+      state.follows = [];
+      state.notifications = [];
+      state.directMessages = [];
       persistAll();
       render();
     }
 
-    function heartbeatPresence() {
-      const me = getCurrentUser();
-      if (!me) return;
-      me.lastActive = Date.now();
-      persistAll();
-      if (hasCloudConfigured()) {
-        pushCloudSync(false);
-      }
-    }
-
-    function notifyTypingActivity(targetUserId) {
-      const me = getCurrentUser();
-      if (!me || !targetUserId) return;
-      typingStatusMap[me.id] = {
-        toUserId: targetUserId,
-        updatedAt: Date.now(),
-      };
-      if (bc) {
-        bc.postMessage({
-          type: 'TYPING_STATE',
-          senderId: me.id,
-          toUserId: targetUserId,
-          updatedAt: Date.now(),
-        });
-      }
-      clearTimeout(typingOutTimer);
-      typingOutTimer = setTimeout(() => {
-        if (typingStatusMap[me.id]) {
-          typingStatusMap[me.id].updatedAt = 0;
-        }
-      }, 2400);
-      pushCloudSync(false);
-    }
-
-    function updateLiveTypingIndicator(chatUserId) {
-      const el = document.getElementById('live-typing-indicator');
-      const me = getCurrentUser();
-      if (!el || !me) return;
-      const entry = typingStatusMap[chatUserId];
-      const active = entry && entry.toUserId === me.id && Date.now() - (entry.updatedAt || 0) < 3500;
-      el.textContent = active ? 'yazıyor...' : '';
-      el.className = active ? 'text-[11px] font-semibold text-purple-300 animate-pulse' : 'hidden';
-    }
-
-    function markMessagesRead(otherUserId, shouldSync = true) {
-      const me = getCurrentUser();
-      if (!me || !otherUserId) return;
-      let updated = false;
-      state.messages.forEach((m) => {
-        if (m.senderId === otherUserId && m.receiverId === me.id && !m.read) {
-          m.read = true;
-          updated = true;
-        }
-      });
-      if (updated) {
-        persistAll();
-        if (shouldSync) pushCloudSync(false);
-      }
-    }
-
-    function handleSendMessage(event) {
-      event.preventDefault();
+    async function heartbeatPresence() {
+      const client = getSupabaseClient();
+      if (!client || !state.sessionUserId) return;
       try {
-        const me = getCurrentUser();
-        const targetId = state.selectedChatUserId;
-        if (!me || !targetId) return;
-        const input = document.getElementById('dm-message-input');
-        const text = input ? input.value.trim() : '';
-        if (!text) return;
+        await client
+          .from('profiles')
+          .update({ last_active: new Date().toISOString() })
+          .eq('id', state.sessionUserId);
+      } catch (err) {}
+    }
 
-        if (typingStatusMap[me.id]) {
-          typingStatusMap[me.id].updatedAt = 0;
+    // =========================================================================
+    // 5. TAKİP ETME, CANLI KULLANICI ARAMA VE BİLDİRİMLER
+    // =========================================================================
+    function isFollowing(targetUserId) {
+      if (!state.sessionUserId || !targetUserId) return false;
+      return state.follows.some(
+        (f) => f.follower_id === state.sessionUserId && f.following_id === targetUserId
+      );
+    }
+
+    function isFollowedBy(targetUserId) {
+      if (!state.sessionUserId || !targetUserId) return false;
+      return state.follows.some(
+        (f) => f.follower_id === targetUserId && f.following_id === state.sessionUserId
+      );
+    }
+
+    function isMutualFollow(targetUserId) {
+      return isFollowing(targetUserId) && isFollowedBy(targetUserId);
+    }
+
+    async function toggleFollow(targetUserId) {
+      const client = getSupabaseClient();
+      const me = getCurrentUser();
+      if (!client || !me || !targetUserId || me.id === targetUserId) return;
+
+      const existing = state.follows.find(
+        (f) => f.follower_id === me.id && f.following_id === targetUserId
+      );
+
+      if (existing) {
+        const { error } = await client.from('follows').delete().eq('id', existing.id);
+        if (error) {
+          showToast('Takip bırakılamadı.', 'error');
+          return;
+        }
+        state.follows = state.follows.filter((f) => f.id !== existing.id);
+        render();
+        showToast('Takipten çıkıldı.', 'info');
+        await refreshAllDatabaseData();
+        return;
+      }
+
+      const { data, error } = await client
+        .from('follows')
+        .insert({ follower_id: me.id, following_id: targetUserId })
+        .select('id,follower_id,following_id,created_at')
+        .single();
+
+      if (error) {
+        showToast('Takip edilemedi.', 'error');
+        return;
+      }
+
+      if (data) state.follows.push(data);
+
+      // Karşı tarafa takip bildirimi gönder
+      await client.from('notifications').insert({
+        user_id: targetUserId,
+        actor_id: me.id,
+        type: 'follow',
+        text: `@${me.username} seni takip etmeye başladı.`,
+      });
+
+      render();
+      showToast('Takip edildi!', 'success');
+      await refreshAllDatabaseData();
+    }
+
+    async function executeDatabaseUserSearch(rawQuery) {
+      state.searchQuery = rawQuery;
+      const clean = String(rawQuery || '').trim().replace(/^@+/, '');
+
+      if (!clean) {
+        state.searchResults = [];
+        state.isSearching = false;
+        updateSearchResultsList();
+        return;
+      }
+
+      const client = getSupabaseClient();
+      if (!client) return;
+
+      state.isSearching = true;
+      updateSearchResultsList();
+
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(async () => {
+        try {
+          const pattern = `%${clean}%`;
+          const { data, error } = await client
+            .from('profiles')
+            .select('id,username,display_name,bio,avatar_image,last_active,created_at')
+            .or(`username.ilike.${pattern},display_name.ilike.${pattern}`)
+            .limit(30);
+
+          state.isSearching = false;
+          if (!error && Array.isArray(data)) {
+            state.searchResults = data;
+            // Bulunan profilleri genel listeye de birleştir
+            data.forEach((row) => {
+              const idx = state.profiles.findIndex((p) => p.id === row.id);
+              if (idx >= 0) state.profiles[idx] = row;
+              else state.profiles.push(row);
+            });
+          }
+          updateSearchResultsList();
+        } catch (err) {
+          state.isSearching = false;
+          updateSearchResultsList();
+        }
+      }, 220);
+    }
+
+    async function markAllNotificationsRead() {
+      const client = getSupabaseClient();
+      const me = getCurrentUser();
+      if (!client || !me) return;
+
+      const unreadIds = state.notifications.filter((n) => !n.read_at).map((n) => n.id);
+      if (!unreadIds.length) return;
+
+      const nowIso = new Date().toISOString();
+      state.notifications.forEach((n) => {
+        if (unreadIds.includes(n.id)) n.read_at = nowIso;
+      });
+      persistAll();
+      render();
+
+      try {
+        await client.from('notifications').update({ read_at: nowIso }).in('id', unreadIds);
+      } catch (err) {}
+    }
+
+    // =========================================================================
+    // 6. ÖZEL MESAJLAŞMA VE PROFİL DÜZENLEME
+    // =========================================================================
+    async function markMessagesRead(otherUserId) {
+      const client = getSupabaseClient();
+      const me = getCurrentUser();
+      if (!client || !me || !otherUserId) return;
+
+      const unreadIds = state.directMessages
+        .filter((m) => m.sender_id === otherUserId && m.receiver_id === me.id && !m.read_at)
+        .map((m) => m.id);
+
+      if (!unreadIds.length) return;
+
+      const nowIso = new Date().toISOString();
+      state.directMessages.forEach((m) => {
+        if (unreadIds.includes(m.id)) m.read_at = nowIso;
+      });
+      persistAll();
+
+      try {
+        await client.from('direct_messages').update({ read_at: nowIso }).in('id', unreadIds);
+      } catch (err) {}
+    }
+
+    async function handleSendMessage(event) {
+      event.preventDefault();
+      const client = getSupabaseClient();
+      const me = getCurrentUser();
+      const targetId = state.selectedChatUserId;
+      if (!client || !me || !targetId) return;
+
+      const input = document.getElementById('dm-message-input');
+      const body = input ? input.value.trim() : '';
+      if (!body) return;
+
+      const tempId = 'temp_' + Date.now();
+      state.directMessages.push({
+        id: tempId,
+        sender_id: me.id,
+        receiver_id: targetId,
+        body,
+        read_at: null,
+        created_at: new Date().toISOString(),
+      });
+
+      if (input) input.value = '';
+      render();
+      scrollChatToBottom();
+
+      try {
+        typingChannel?.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { senderId: me.id, receiverId: targetId, isTyping: false },
+        });
+
+        const { data, error } = await client
+          .from('direct_messages')
+          .insert({ sender_id: me.id, receiver_id: targetId, body })
+          .select('id,sender_id,receiver_id,body,read_at,created_at')
+          .single();
+
+        if (error || !data) {
+          state.directMessages = state.directMessages.filter((m) => m.id !== tempId);
+          render();
+          showToast('Mesaj gönderilemedi.', 'error');
+          return;
         }
 
-        state.messages.push({
-          id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-          senderId: me.id,
-          receiverId: targetId,
-          text,
-          read: false,
-          createdAt: Date.now(),
-        });
-        me.lastActive = Date.now();
-        if (input) input.value = '';
+        state.directMessages = state.directMessages.map((m) => (m.id === tempId ? data : m));
         persistAll();
-        pushCloudSync(true);
         render();
         scrollChatToBottom();
-        setTimeout(() => {
-          const nextInput = document.getElementById('dm-message-input');
-          if (nextInput) nextInput.focus();
-        }, 30);
+        setTimeout(() => document.getElementById('dm-message-input')?.focus(), 20);
       } catch (err) {
-        showToast('Mesaj gönderilemedi.', 'error');
+        state.directMessages = state.directMessages.filter((m) => m.id !== tempId);
+        render();
+        showToast('Mesaj gönderilirken hata oluştu.', 'error');
       }
     }
 
@@ -760,51 +777,11 @@
       }, 20);
     }
 
-    // =========================================================================
-    // 5. GÖNDERİ, BEĞENİ, YORUM, TAKİP VE PROFİL İŞLEMLERİ
-    // =========================================================================
-    function handleCreatePost(event) {
-      event.preventDefault();
-      try {
-        const me = getCurrentUser();
-        if (!me) return;
-        const caption = (document.getElementById('post-caption')?.value || '').trim();
-        const location = (document.getElementById('post-location')?.value || '').trim();
-        const imageData = document.getElementById('post-image-preview')?.dataset?.image || '';
-
-        if (!imageData && !caption) {
-          showToast('Bir fotoğraf seç veya açıklama yaz.', 'error');
-          return;
-        }
-
-        const newPost = {
-          id: 'pst_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-          authorId: me.id,
-          image: imageData,
-          caption,
-          location,
-          likes: [],
-          comments: [],
-          createdAt: Date.now(),
-        };
-
-        state.posts.unshift(newPost);
-        me.lastActive = Date.now();
-        state.activeTab = 'feed';
-        persistAll();
-        pushCloudSync(true);
-        showToast('Gönderi paylaşıldı!', 'success');
-        render();
-      } catch (err) {
-        showToast('Gönderi paylaşılırken hata oluştu.', 'error');
-      }
-    }
-
     function handleImageFileChange(inputEl, targetPreviewId) {
       const file = inputEl?.files?.[0];
       if (!file) return;
-      if (file.size > 4 * 1024 * 1024) {
-        showToast('Görsel boyutu en fazla 4 MB olmalı.', 'error');
+      if (file.size > 3 * 1024 * 1024) {
+        showToast('Görsel en fazla 3 MB olmalı.', 'error');
         return;
       }
       const reader = new FileReader();
@@ -816,111 +793,44 @@
           preview.classList.remove('hidden');
         }
       };
-      reader.onerror = () => {
-        showToast('Fotoğraf okunamadı.', 'error');
-      };
       reader.readAsDataURL(file);
     }
 
-    function toggleLikePost(postId) {
-      const me = getCurrentUser();
-      if (!me) return;
-      const post = state.posts.find((p) => p.id === postId);
-      if (!post) return;
-      post.likes = Array.isArray(post.likes) ? post.likes : [];
-      const idx = post.likes.indexOf(me.id);
-      if (idx >= 0) {
-        post.likes.splice(idx, 1);
-      } else {
-        post.likes.push(me.id);
-      }
-      persistAll();
-      pushCloudSync(false);
-      render();
-    }
-
-    function handleAddComment(event, postId) {
+    async function handleSaveProfile(event) {
       event.preventDefault();
+      const client = getSupabaseClient();
       const me = getCurrentUser();
-      if (!me) return;
-      const input = document.getElementById(`comment-input-${postId}`);
-      const text = input ? input.value.trim() : '';
-      if (!text) return;
-      const post = state.posts.find((p) => p.id === postId);
-      if (!post) return;
-      post.comments = Array.isArray(post.comments) ? post.comments : [];
-      post.comments.push({
-        id: 'cmt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
-        authorId: me.id,
-        text,
-        createdAt: Date.now(),
-      });
-      if (input) input.value = '';
-      persistAll();
-      pushCloudSync(false);
-      render();
-    }
+      if (!client || !me) return;
 
-    function toggleFollow(targetUserId) {
-      const me = getCurrentUser();
-      if (!me || me.id === targetUserId) return;
-      const existingIdx = state.follows.findIndex(
-        (f) => f.followerId === me.id && f.followingId === targetUserId
-      );
-      if (existingIdx >= 0) {
-        state.follows.splice(existingIdx, 1);
-        showToast('Takipten çıkıldı.', 'info');
-      } else {
-        state.follows.push({ followerId: me.id, followingId: targetUserId });
-        showToast('Takip edildi.', 'success');
-      }
-      persistAll();
-      pushCloudSync(false);
-      render();
-    }
-
-    function handleSaveProfile(event) {
-      event.preventDefault();
-      const me = getCurrentUser();
-      if (!me) return;
       const displayName = (document.getElementById('edit-display-name')?.value || '').trim();
       const bio = (document.getElementById('edit-bio')?.value || '').trim();
       const avatarData = document.getElementById('edit-avatar-preview')?.dataset?.image;
 
-      me.displayName = displayName || me.username;
-      me.bio = bio;
-      if (avatarData) {
-        me.avatarImage = avatarData;
-      }
-      me.lastActive = Date.now();
-      state.editProfileOpen = false;
-      persistAll();
-      pushCloudSync(true);
-      showToast('Profil güncellendi.', 'success');
-      render();
-    }
+      const payload = {
+        display_name: displayName || me.username,
+        bio,
+        last_active: new Date().toISOString(),
+      };
+      if (avatarData !== undefined) payload.avatar_image = avatarData;
 
-    function handleSaveCloudSettings(event) {
-      event.preventDefault();
-      const url = document.getElementById('cfg-supabase-url')?.value || '';
-      const anonKey = document.getElementById('cfg-supabase-key')?.value || '';
-      const roomId = document.getElementById('cfg-room-id')?.value || DEFAULT_ROOM_ID;
-      saveCloudConfig({ url, anonKey, roomId });
-      activeRealtimeKey = '';
-      initSupabaseRealtimeBridge();
-      showToast('Supabase ayarları kaydedildi, canlı kanal bağlanıyor...', 'info');
-      pushCloudSync(true);
-      setTimeout(() => pullCloudSync(true), 300);
-      render();
+      const { error } = await client.from('profiles').update(payload).eq('id', me.id);
+      if (error) {
+        showToast('Profil güncellenemedi.', 'error');
+        return;
+      }
+
+      state.editProfileOpen = false;
+      await refreshAllDatabaseData();
+      showToast('Profil güncellendi.', 'success');
     }
 
     // =========================================================================
-    // 6. ARAYÜZ BİLEŞENLERİ (RENDER)
+    // 7. SADE VE TEMİZ ARAYÜZ BİLEŞENLERİ
     // =========================================================================
     function renderAvatar(user, sizeClass = 'w-10 h-10 text-sm', showOnlineDot = false) {
-      const initial = escapeHtml((user?.displayName || user?.username || '?').charAt(0).toUpperCase());
-      const imgHtml = user?.avatarImage
-        ? `<img src="${escapeHtml(user.avatarImage)}" alt="${escapeHtml(user.username)}" class="w-full h-full object-cover rounded-full" onerror="this.style.display='none'" />`
+      const initial = escapeHtml((user?.display_name || user?.username || '?').charAt(0).toUpperCase());
+      const imgHtml = user?.avatar_image
+        ? `<img src="${escapeHtml(user.avatar_image)}" alt="${escapeHtml(user.username)}" class="w-full h-full object-cover rounded-full" onerror="this.style.display='none'" />`
         : `<span class="font-bold text-white select-none">${initial}</span>`;
 
       const dotHtml = showOnlineDot
@@ -941,13 +851,13 @@
       const isRegister = authMode === 'register';
       return `
         <div class="flex-1 flex items-center justify-center p-4 bg-obsidian">
-          <div class="w-full max-w-[360px] space-y-3">
+          <div class="w-full max-w-[350px] space-y-3">
             <div class="rounded-2xl bg-night border border-borderViolet px-7 py-8 shadow-armor">
               <div class="text-center mb-6">
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl armor-gradient-btn text-white font-extrabold text-2xl shadow-armorSm mb-3">
                   A
                 </div>
-                <h1 class="text-2xl font-extrabold tracking-tight text-white">Amorgram</h1>
+                <h1 class="text-2xl font-extrabold tracking-tight text-white">Armorgram</h1>
               </div>
 
               <div class="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-obsidian border border-white/10 mb-4">
@@ -999,7 +909,7 @@
                     id="auth-password"
                     type="password"
                     autocomplete="${isRegister ? 'new-password' : 'current-password'}"
-                    placeholder="Şifre"
+                    placeholder="Şifre (en az 6 karakter)"
                     class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-xs sm:text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
                   />
                 </div>
@@ -1015,11 +925,7 @@
 
             <div class="rounded-2xl bg-night border border-borderViolet px-5 py-3.5 text-center">
               <p class="text-xs text-violet-200/80">
-                ${
-                  isRegister
-                    ? 'Zaten hesabın var mı? '
-                    : 'Hesabın yok mu? '
-                }
+                ${isRegister ? 'Zaten hesabın var mı? ' : 'Hesabın yok mu? '}
                 <button
                   type="button"
                   onclick="authMode='${isRegister ? 'login' : 'register'}'; render();"
@@ -1035,87 +941,83 @@
     }
 
     function renderTopBar(me) {
-      const unreadCount = state.messages.filter((m) => m.receiverId === me.id && !m.read).length;
+      const unreadNotifs = state.notifications.filter((n) => !n.read_at).length;
+
       return `
         <header class="sticky top-0 z-30 bg-night/95 backdrop-blur-md border-b border-white/10">
-          <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div class="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
             <button
               type="button"
-              onclick="state.activeTab='feed'; state.viewedProfileUserId=null; render();"
+              onclick="state.activeTab='messages'; state.selectedChatUserId=null; render();"
               class="flex items-center gap-2.5 cursor-pointer"
             >
               <span class="w-8 h-8 rounded-xl armor-gradient-btn flex items-center justify-center text-white font-extrabold text-sm shadow-armorSm">A</span>
-              <span class="font-extrabold text-base tracking-tight text-white">Amorgram</span>
+              <span class="font-extrabold text-base tracking-tight text-white">Armorgram</span>
             </button>
 
-            <div class="flex items-center gap-2">
-              <span
-                title="${hasCloudConfigured() ? 'Supabase Bulut Bağlı' : 'Yerel Mod'}"
-                class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                  state.cloudConnected
-                    ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300'
-                    : 'bg-surface border-white/10 text-violet-300/75'
-                }"
-              >
-                <span class="w-2 h-2 rounded-full ${state.cloudConnected ? 'bg-emerald-400' : 'bg-amber-400'}"></span>
-                ${state.cloudConnected ? 'Bulut Aktif' : 'Yerel'}
-              </span>
-
-              <button
-                type="button"
-                onclick="pullCloudSync(true)"
-                class="p-2 rounded-xl bg-surface hover:bg-borderViolet/60 text-violet-200 cursor-pointer"
-                title="Eşitle"
-              >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                  <path d="M3 3v5h5" />
-                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-                  <path d="M16 16h5v5" />
-                </svg>
-              </button>
-
-              <button
-                type="button"
-                onclick="state.activeTab='messages'; render();"
-                class="relative p-2 rounded-xl bg-surface hover:bg-borderViolet/60 text-violet-200 cursor-pointer"
-                title="Mesajlar"
-              >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                ${
-                  unreadCount > 0
-                    ? `<span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-fuchsia-600 text-white text-[10px] font-bold flex items-center justify-center">${unreadCount}</span>`
-                    : ''
-                }
-              </button>
-            </div>
+            <button
+              type="button"
+              onclick="state.activeTab='notifications'; markAllNotificationsRead(); render();"
+              class="relative p-2 rounded-xl bg-surface hover:bg-borderViolet/60 text-violet-200 cursor-pointer"
+              title="Bildirimler"
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              ${
+                unreadNotifs > 0
+                  ? `<span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-fuchsia-600 text-white text-[10px] font-bold flex items-center justify-center">${unreadNotifs}</span>`
+                  : ''
+              }
+            </button>
           </div>
         </header>
       `;
     }
 
-    function renderBottomNav() {
+    function renderBottomNav(me) {
+      const unreadNotifs = state.notifications.filter((n) => !n.read_at).length;
+      const unreadMsgs = state.directMessages.filter((m) => m.receiver_id === me.id && !m.read_at).length;
+
       const navItems = [
-        { id: 'feed', label: 'Akış', icon: '<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/>' },
-        { id: 'search', label: 'Ara', icon: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>' },
-        { id: 'create', label: 'Paylaş', icon: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>' },
-        { id: 'messages', label: 'DM', icon: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' },
-        { id: 'profile', label: 'Profil', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
+        {
+          id: 'messages',
+          label: 'Mesajlar',
+          badge: unreadMsgs,
+          icon: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+        },
+        {
+          id: 'search',
+          label: 'Ara',
+          badge: 0,
+          icon: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+        },
+        {
+          id: 'notifications',
+          label: 'Bildirimler',
+          badge: unreadNotifs,
+          icon: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+        },
+        {
+          id: 'profile',
+          label: 'Profil',
+          badge: 0,
+          icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+        },
       ];
 
       return `
         <nav class="fixed bottom-0 inset-x-0 z-30 bg-night/95 backdrop-blur-md border-t border-white/10">
-          <div class="max-w-3xl mx-auto px-2 h-16 grid grid-cols-5 items-center">
+          <div class="max-w-lg mx-auto px-2 h-16 grid grid-cols-4 items-center">
             ${navItems
               .map((item) => {
                 const active = state.activeTab === item.id;
                 return `
                   <button
                     type="button"
-                    onclick="state.activeTab='${item.id}'; if('${item.id}'==='profile') state.viewedProfileUserId=null; render();"
-                    class="flex flex-col items-center justify-center gap-1 py-1.5 rounded-2xl cursor-pointer transition-colors ${
+                    onclick="state.activeTab='${item.id}'; if('${item.id}'==='profile') state.viewedProfileUserId=null; if('${item.id}'==='notifications') markAllNotificationsRead(); render();"
+                    class="relative flex flex-col items-center justify-center gap-1 py-1.5 rounded-2xl cursor-pointer transition-colors ${
                       active ? 'text-purple-300 font-bold' : 'text-violet-300/60 hover:text-violet-100'
                     }"
                   >
@@ -1123,6 +1025,11 @@
                       ${item.icon}
                     </svg>
                     <span class="text-[11px]">${item.label}</span>
+                    ${
+                      item.badge > 0
+                        ? `<span class="absolute top-1 right-4 min-w-[17px] h-[17px] px-1 rounded-full bg-fuchsia-600 text-white text-[10px] font-bold flex items-center justify-center">${item.badge}</span>`
+                        : ''
+                    }
                   </button>
                 `;
               })
@@ -1132,161 +1039,68 @@
       `;
     }
 
-    function renderFeedTab(me) {
-      if (!state.posts.length) {
+    function renderFollowButton(targetUserId) {
+      const me = getCurrentUser();
+      if (!me || !targetUserId || me.id === targetUserId) return '';
+
+      const following = isFollowing(targetUserId);
+      const followsMe = isFollowedBy(targetUserId);
+
+      if (following) {
         return `
-          <div class="max-w-lg mx-auto px-4 py-12 text-center">
-            <div class="rounded-3xl bg-night border border-borderViolet p-8">
-              <p class="text-base font-bold text-white mb-1">Henüz gönderi yok</p>
-              <p class="text-xs text-violet-300/75 mb-4">İlk fotoğrafını veya notunu paylaşarak akışı başlat.</p>
-              <button
-                type="button"
-                onclick="state.activeTab='create'; render();"
-                class="px-5 py-2.5 rounded-2xl armor-gradient-btn text-white text-xs font-bold shadow-armorSm cursor-pointer"
-              >
-                Gönderi Oluştur
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            onclick="toggleFollow('${escapeHtml(targetUserId)}')"
+            class="px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-950/70 border border-white/15 text-violet-100 text-xs font-bold cursor-pointer"
+          >
+            ${followsMe ? 'Takipleşiyorsunuz' : 'Takip Ediliyor'}
+          </button>
         `;
       }
 
       return `
-        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-4">
-          ${state.posts
-            .map((post) => {
-              const author = getUserById(post.authorId) || {
-                id: post.authorId,
-                username: 'kullanici',
-                displayName: 'Kullanıcı',
-              };
-              const likes = Array.isArray(post.likes) ? post.likes : [];
-              const comments = Array.isArray(post.comments) ? post.comments : [];
-              const isLiked = likes.includes(me.id);
-
-              return `
-                <article class="rounded-3xl bg-night border border-borderViolet overflow-hidden shadow-armorSm">
-                  <div class="px-4 py-3 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onclick="state.activeTab='profile'; state.viewedProfileUserId='${escapeHtml(author.id)}'; render();"
-                      class="flex items-center gap-2.5 text-left cursor-pointer"
-                    >
-                      ${renderAvatar(author, 'w-9 h-9 text-xs', true)}
-                      <div>
-                        <p class="text-sm font-bold text-white leading-tight">${escapeHtml(author.displayName || author.username)}</p>
-                        <p class="text-[11px] text-violet-300/70">@${escapeHtml(author.username)}${post.location ? ' · ' + escapeHtml(post.location) : ''}</p>
-                      </div>
-                    </button>
-                    <span class="text-[11px] text-violet-300/60">${formatTimeAgo(post.createdAt)}</span>
-                  </div>
-
-                  ${
-                    post.image
-                      ? `<div class="bg-obsidian border-y border-white/5">
-                           <img src="${escapeHtml(post.image)}" alt="Gönderi görseli" class="w-full max-h-[460px] object-cover" onerror="this.style.display='none'" />
-                         </div>`
-                      : ''
-                  }
-
-                  <div class="p-4 space-y-3">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onclick="toggleLikePost('${escapeHtml(post.id)}')"
-                          class="px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer ${
-                            isLiked
-                              ? 'bg-fuchsia-950/70 border-fuchsia-500/40 text-fuchsia-300'
-                              : 'bg-surface border-white/10 text-violet-200 hover:text-white'
-                          }"
-                        >
-                          ${isLiked ? '♥' : '♡'} ${likes.length}
-                        </button>
-                        <span class="text-xs text-violet-300/75">${comments.length} yorum</span>
-                      </div>
-                      ${
-                        author.id !== me.id
-                          ? `<button
-                               type="button"
-                               onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(author.id)}'; markMessagesRead('${escapeHtml(author.id)}'); render();"
-                               class="px-3 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-semibold text-purple-200 cursor-pointer"
-                             >
-                               Mesaj
-                             </button>`
-                          : ''
-                      }
-                    </div>
-
-                    ${
-                      post.caption
-                        ? `<p class="text-sm text-violet-100 leading-relaxed"><span class="font-bold text-white mr-1.5">${escapeHtml(author.username)}</span>${escapeHtml(post.caption)}</p>`
-                        : ''
-                    }
-
-                    ${
-                      comments.length
-                        ? `<div class="space-y-1.5 pt-1 border-t border-white/5">
-                             ${comments
-                               .slice(-3)
-                               .map((c) => {
-                                 const cAuthor = getUserById(c.authorId) || { username: 'kullanici' };
-                                 return `<p class="text-xs text-violet-200"><span class="font-bold text-white mr-1">${escapeHtml(cAuthor.username)}</span>${escapeHtml(c.text)}</p>`;
-                               })
-                               .join('')}
-                           </div>`
-                        : ''
-                    }
-
-                    <form onsubmit="handleAddComment(event, '${escapeHtml(post.id)}')" class="flex items-center gap-2 pt-1">
-                      <input
-                        id="comment-input-${escapeHtml(post.id)}"
-                        type="text"
-                        placeholder="Yorum yaz..."
-                        class="flex-1 px-3.5 py-2 rounded-2xl bg-obsidian border border-white/10 text-xs text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
-                      />
-                      <button type="submit" class="px-3.5 py-2 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer">
-                        Gönder
-                      </button>
-                    </form>
-                  </div>
-                </article>
-              `;
-            })
-            .join('')}
-        </div>
+        <button
+          type="button"
+          onclick="toggleFollow('${escapeHtml(targetUserId)}')"
+          class="px-3 py-1.5 rounded-xl armor-gradient-btn text-white text-xs font-bold cursor-pointer"
+        >
+          ${followsMe ? 'Sen de Takip Et' : 'Takip Et'}
+        </button>
       `;
     }
 
-    function getFilteredUsers(me) {
-      const q = (state.searchQuery || '').trim().toLowerCase();
-      return state.users.filter((u) => {
+    function renderSearchUserRows(me) {
+      const q = (state.searchQuery || '').trim().toLowerCase().replace(/^@+/, '');
+      const sourceList = q ? state.searchResults : state.profiles;
+      const matches = sourceList.filter((u) => {
         if (!u || u.id === me.id) return false;
         if (!q) return true;
         return (
           String(u.username || '').toLowerCase().includes(q) ||
-          String(u.displayName || '').toLowerCase().includes(q)
+          String(u.display_name || '').toLowerCase().includes(q)
         );
       });
-    }
 
-    function renderSearchUserRows(me) {
-      const matches = getFilteredUsers(me);
+      if (state.isSearching) {
+        return `
+          <div class="rounded-2xl bg-night border border-borderViolet p-6 text-center text-xs text-violet-300/75">
+            Kullanıcı aranıyor...
+          </div>
+        `;
+      }
+
       if (!matches.length) {
         return `
-          <div class="rounded-3xl bg-night border border-borderViolet p-6 text-center">
+          <div class="rounded-2xl bg-night border border-borderViolet p-6 text-center">
             <p class="text-sm font-bold text-white mb-1">Kullanıcı bulunamadı</p>
-            <p class="text-xs text-violet-300/70">Diğer cihazın buluta bağlandığından emin olup "Yenile" ile eşitleyebilirsin.</p>
+            <p class="text-xs text-violet-300/70">Tam veya kısmi kullanıcı adını yazarak arama yapabilirsin.</p>
           </div>
         `;
       }
 
       return matches
-        .map((u) => {
-          const isFollowing = state.follows.some(
-            (f) => f.followerId === me.id && f.followingId === u.id
-          );
-          return `
+        .map(
+          (u) => `
             <div class="rounded-2xl bg-night border border-borderViolet p-3.5 flex items-center justify-between gap-3">
               <button
                 type="button"
@@ -1295,33 +1109,23 @@
               >
                 ${renderAvatar(u, 'w-11 h-11 text-sm', true)}
                 <div class="min-w-0">
-                  <p class="text-sm font-bold text-white truncate">${escapeHtml(u.displayName || u.username)}</p>
-                  <p class="text-xs text-violet-300/70 truncate">@${escapeHtml(u.username)} · ${escapeHtml(formatLastSeen(u))}</p>
+                  <p class="text-sm font-bold text-white truncate">${escapeHtml(u.display_name || u.username)}</p>
+                  <p class="text-xs text-violet-300/70 truncate">@${escapeHtml(u.username)}</p>
                 </div>
               </button>
-              <div class="flex items-center gap-2 shrink-0">
+              <div class="flex items-center gap-1.5 shrink-0">
+                ${renderFollowButton(u.id)}
                 <button
                   type="button"
-                  onclick="toggleFollow('${escapeHtml(u.id)}')"
-                  class="px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
-                    isFollowing
-                      ? 'bg-surface border-purple-500/40 text-purple-200'
-                      : 'armor-gradient-btn border-transparent text-white'
-                  }"
-                >
-                  ${isFollowing ? 'Takip' : 'Takip Et'}
-                </button>
-                <button
-                  type="button"
-                  onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(u.id)}'; markMessagesRead('${escapeHtml(u.id)}'); render();"
-                  class="px-3 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-violet-100 cursor-pointer"
+                  onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(u.id)}'; markMessagesRead('${escapeHtml(u.id)}'); render(); scrollChatToBottom();"
+                  class="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
                 >
                   Mesaj
                 </button>
               </div>
             </div>
-          `;
-        })
+          `
+        )
         .join('');
     }
 
@@ -1334,23 +1138,16 @@
 
     function renderSearchTab(me) {
       return `
-        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-4">
-          <div class="flex items-center gap-2">
+        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-3">
+          <div>
             <input
               id="search-users-input"
               type="text"
               value="${escapeHtml(state.searchQuery)}"
-              oninput="state.searchQuery = this.value; updateSearchResultsList();"
-              placeholder="Kullanıcı adı veya isim ara..."
-              class="flex-1 px-4 py-2.5 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+              oninput="executeDatabaseUserSearch(this.value)"
+              placeholder="Kullanıcı adı ara..."
+              class="w-full px-4 py-3 rounded-2xl bg-night border border-borderViolet text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
             />
-            <button
-              type="button"
-              onclick="pullCloudSync(true)"
-              class="px-3.5 py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
-            >
-              Yenile
-            </button>
           </div>
 
           <div id="search-results-container" class="space-y-2.5">
@@ -1360,56 +1157,62 @@
       `;
     }
 
-    function renderCreateTab() {
+    function renderNotificationsTab(me) {
+      const items = state.notifications;
+
       return `
-        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4">
-          <form onsubmit="handleCreatePost(event)" class="rounded-3xl bg-night border border-borderViolet p-5 space-y-4 shadow-armorSm">
-            <h2 class="text-base font-extrabold text-white">Yeni Gönderi Paylaş</h2>
+        <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-3">
+          <div class="flex items-center justify-between px-1">
+            <h2 class="text-base font-extrabold text-white">Bildirimler</h2>
+            ${
+              items.length
+                ? `<button
+                     type="button"
+                     onclick="markAllNotificationsRead()"
+                     class="text-xs font-bold text-purple-300 hover:text-white cursor-pointer"
+                   >
+                     Tümünü okundu işaretle
+                   </button>`
+                : ''
+            }
+          </div>
 
-            <div>
-              <label class="block text-xs font-semibold text-violet-200 mb-1.5">Fotoğraf Seç</label>
-              <input
-                type="file"
-                accept="image/*"
-                onchange="handleImageFileChange(this, 'post-image-preview')"
-                class="block w-full text-xs text-violet-200 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-500"
-              />
-              <img
-                id="post-image-preview"
-                data-image=""
-                src=""
-                alt="Önizleme"
-                class="hidden mt-3 w-full max-h-72 object-cover rounded-2xl border border-white/10"
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-violet-200 mb-1.5">Açıklama</label>
-              <textarea
-                id="post-caption"
-                rows="3"
-                placeholder="Ne düşünüyorsun veya fotoğrafın hikayesi ne?"
-                class="w-full px-4 py-2.5 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
-              ></textarea>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-violet-200 mb-1.5">Konum (Opsiyonel)</label>
-              <input
-                id="post-location"
-                type="text"
-                placeholder="Örn: Cizre, Şırnak"
-                class="w-full px-4 py-2.5 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              class="w-full py-3 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer"
-            >
-              Paylaş
-            </button>
-          </form>
+          ${
+            !items.length
+              ? `<div class="rounded-2xl bg-night border border-borderViolet p-8 text-center">
+                   <p class="text-sm font-bold text-white mb-1">Henüz bildirim yok</p>
+                   <p class="text-xs text-violet-300/70">Biri seni takip ettiğinde burada görünecek.</p>
+                 </div>`
+              : items
+                  .map((n) => {
+                    const actor = getUserById(n.actor_id) || {
+                      id: n.actor_id,
+                      username: 'kullanici',
+                      display_name: 'Kullanıcı',
+                    };
+                    return `
+                      <div class="rounded-2xl bg-night border ${
+                        n.read_at ? 'border-borderViolet' : 'border-purple-500/50'
+                      } p-3.5 flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onclick="state.activeTab='profile'; state.viewedProfileUserId='${escapeHtml(actor.id)}'; render();"
+                          class="flex items-center gap-3 text-left min-w-0 flex-1 cursor-pointer"
+                        >
+                          ${renderAvatar(actor, 'w-10 h-10 text-xs', true)}
+                          <div class="min-w-0">
+                            <p class="text-xs sm:text-sm text-violet-100 leading-snug">${escapeHtml(n.text)}</p>
+                            <span class="text-[11px] text-violet-300/60">${formatTimeAgo(n.created_at)}</span>
+                          </div>
+                        </button>
+                        <div class="shrink-0">
+                          ${renderFollowButton(actor.id)}
+                        </div>
+                      </div>
+                    `;
+                  })
+                  .join('')
+          }
         </div>
       `;
     }
@@ -1418,53 +1221,72 @@
       const selectedUser = getUserById(state.selectedChatUserId);
 
       if (!selectedUser) {
-        const contacts = state.users.filter((u) => u && u.id !== me.id);
+        // Takip edilenler, takip edenler veya daha önce mesajlaşılan kişiler
+        const chatUserIds = new Set();
+        state.follows.forEach((f) => {
+          if (f.follower_id === me.id) chatUserIds.add(f.following_id);
+          if (f.following_id === me.id) chatUserIds.add(f.follower_id);
+        });
+        state.directMessages.forEach((m) => {
+          if (m.sender_id === me.id) chatUserIds.add(m.receiver_id);
+          if (m.receiver_id === me.id) chatUserIds.add(m.sender_id);
+        });
+
+        const contacts = state.profiles.filter((u) => u && u.id !== me.id && chatUserIds.has(u.id));
+
         return `
           <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-3">
             <div class="flex items-center justify-between px-1">
               <h2 class="text-base font-extrabold text-white">Mesajlar</h2>
               <button
                 type="button"
-                onclick="pullCloudSync(true)"
+                onclick="state.activeTab='search'; render();"
                 class="px-3 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
               >
-                Eşitle
+                Kişi Ara
               </button>
             </div>
 
             ${
               !contacts.length
-                ? `<div class="rounded-3xl bg-night border border-borderViolet p-6 text-center">
-                     <p class="text-sm font-bold text-white mb-1">Henüz başka kullanıcı yok</p>
-                     <p class="text-xs text-violet-300/70">Diğer cihazdan kayıt olunduğunda burada görünecek.</p>
+                ? `<div class="rounded-2xl bg-night border border-borderViolet p-7 text-center space-y-3">
+                     <p class="text-sm font-bold text-white">Henüz sohbet yok</p>
+                     <p class="text-xs text-violet-300/70">Ara sekmesinden kullanıcı adıyla kişi bulup takip ederek mesajlaşabilirsin.</p>
+                     <button
+                       type="button"
+                       onclick="state.activeTab='search'; render();"
+                       class="px-4 py-2 rounded-xl armor-gradient-btn text-white text-xs font-bold cursor-pointer"
+                     >
+                       Kullanıcı Ara
+                     </button>
                    </div>`
                 : contacts
                     .map((u) => {
-                      const thread = state.messages
+                      const thread = state.directMessages
                         .filter(
                           (m) =>
-                            (m.senderId === me.id && m.receiverId === u.id) ||
-                            (m.senderId === u.id && m.receiverId === me.id)
+                            (m.sender_id === me.id && m.receiver_id === u.id) ||
+                            (m.sender_id === u.id && m.receiver_id === me.id)
                         )
-                        .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+                        .sort((a, b) => Date.parse(a.created_at || 0) - Date.parse(b.created_at || 0));
                       const lastMsg = thread[thread.length - 1];
-                      const unread = thread.filter((m) => m.senderId === u.id && !m.read).length;
+                      const unread = thread.filter((m) => m.sender_id === u.id && !m.read_at).length;
 
                       return `
                         <button
                           type="button"
-                          onclick="state.selectedChatUserId='${escapeHtml(u.id)}'; markMessagesRead('${escapeHtml(u.id)}'); render(); scrollChatToBottom();"
+                          onclick="state.selectedChatUserId='${escapeHtml(u.id)}'; activeTypingPeerId='${escapeHtml(u.id)}'; markMessagesRead('${escapeHtml(u.id)}'); render(); scrollChatToBottom();"
                           class="w-full rounded-2xl bg-night hover:bg-surface/80 border border-borderViolet p-3.5 flex items-center justify-between gap-3 text-left cursor-pointer"
                         >
                           <div class="flex items-center gap-3 min-w-0 flex-1">
                             ${renderAvatar(u, 'w-11 h-11 text-sm', true)}
                             <div class="min-w-0 flex-1">
                               <div class="flex items-center justify-between gap-2">
-                                <p class="text-sm font-bold text-white truncate">${escapeHtml(u.displayName || u.username)}</p>
-                                <span class="text-[11px] text-violet-300/60 shrink-0">${lastMsg ? formatTimeAgo(lastMsg.createdAt) : ''}</span>
+                                <p class="text-sm font-bold text-white truncate">${escapeHtml(u.display_name || u.username)}</p>
+                                <span class="text-[11px] text-violet-300/60 shrink-0">${lastMsg ? formatTimeAgo(lastMsg.created_at) : ''}</span>
                               </div>
                               <p class="text-xs text-violet-300/75 truncate mt-0.5">
-                                ${lastMsg ? escapeHtml(lastMsg.text) : escapeHtml(formatLastSeen(u))}
+                                ${lastMsg ? escapeHtml(lastMsg.body) : `@${escapeHtml(u.username)}`}
                               </p>
                             </div>
                           </div>
@@ -1482,13 +1304,14 @@
         `;
       }
 
-      const conversation = state.messages
+      activeTypingPeerId = selectedUser.id;
+      const conversation = state.directMessages
         .filter(
           (m) =>
-            (m.senderId === me.id && m.receiverId === selectedUser.id) ||
-            (m.senderId === selectedUser.id && m.receiverId === me.id)
+            (m.sender_id === me.id && m.receiver_id === selectedUser.id) ||
+            (m.sender_id === selectedUser.id && m.receiver_id === me.id)
         )
-        .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+        .sort((a, b) => Date.parse(a.created_at || 0) - Date.parse(b.created_at || 0));
 
       return `
         <div class="max-w-lg mx-auto px-3 sm:px-4 py-3 flex flex-col h-[calc(100vh-7.5rem)]">
@@ -1496,20 +1319,21 @@
             <div class="flex items-center gap-2.5 min-w-0">
               <button
                 type="button"
-                onclick="state.selectedChatUserId=null; render();"
+                onclick="state.selectedChatUserId=null; activeTypingPeerId=null; peerIsTyping=false; render();"
                 class="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-borderViolet/60 text-xs font-bold text-violet-200 cursor-pointer"
               >
                 Geri
               </button>
               ${renderAvatar(selectedUser, 'w-9 h-9 text-xs', true)}
               <div class="min-w-0">
-                <p class="text-sm font-bold text-white truncate">${escapeHtml(selectedUser.displayName || selectedUser.username)}</p>
+                <p class="text-sm font-bold text-white truncate">${escapeHtml(selectedUser.display_name || selectedUser.username)}</p>
                 <div class="flex items-center gap-2">
                   <span class="text-[11px] text-violet-300/70">${escapeHtml(formatLastSeen(selectedUser))}</span>
                   <span id="live-typing-indicator" class="hidden"></span>
                 </div>
               </div>
             </div>
+            ${renderFollowButton(selectedUser.id)}
           </div>
 
           <div id="chat-scroll-box" class="flex-1 overflow-y-auto custom-scroll space-y-2.5 px-1 pb-2">
@@ -1518,7 +1342,7 @@
                 ? `<div class="text-center py-10 text-xs text-violet-300/60">Henüz mesaj yok. İlk mesajı gönder!</div>`
                 : conversation
                     .map((msg) => {
-                      const mine = msg.senderId === me.id;
+                      const mine = msg.sender_id === me.id;
                       return `
                         <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
                           <div class="max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm ${
@@ -1526,10 +1350,10 @@
                               ? 'armor-gradient-btn text-white rounded-br-sm'
                               : 'bg-night border border-borderViolet text-violet-100 rounded-bl-sm'
                           }">
-                            <p class="break-words leading-snug">${escapeHtml(msg.text)}</p>
+                            <p class="break-words leading-snug">${escapeHtml(msg.body)}</p>
                             <div class="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-80">
-                              <span>${formatTimeAgo(msg.createdAt)}</span>
-                              ${mine ? `<span>${msg.read ? '✓✓' : '✓'}</span>` : ''}
+                              <span>${formatTimeAgo(msg.created_at)}</span>
+                              ${mine ? `<span>${msg.read_at ? '✓✓' : '✓'}</span>` : ''}
                             </div>
                           </div>
                         </div>
@@ -1561,12 +1385,8 @@
     function renderProfileTab(me) {
       const targetUser = getUserById(state.viewedProfileUserId) || me;
       const isMine = targetUser.id === me.id;
-      const userPosts = state.posts.filter((p) => p.authorId === targetUser.id);
-      const followersCount = state.follows.filter((f) => f.followingId === targetUser.id).length;
-      const followingCount = state.follows.filter((f) => f.followerId === targetUser.id).length;
-      const isFollowing = state.follows.some(
-        (f) => f.followerId === me.id && f.followingId === targetUser.id
-      );
+      const followersCount = state.follows.filter((f) => f.following_id === targetUser.id).length;
+      const followingCount = state.follows.filter((f) => f.follower_id === targetUser.id).length;
 
       return `
         <div class="max-w-lg mx-auto px-3 sm:px-4 py-4 space-y-4">
@@ -1575,7 +1395,7 @@
               <div class="flex items-center gap-3.5 min-w-0">
                 ${renderAvatar(targetUser, 'w-16 h-16 text-xl', true)}
                 <div class="min-w-0">
-                  <h2 class="text-lg font-extrabold text-white truncate">${escapeHtml(targetUser.displayName || targetUser.username)}</h2>
+                  <h2 class="text-lg font-extrabold text-white truncate">${escapeHtml(targetUser.display_name || targetUser.username)}</h2>
                   <p class="text-xs text-violet-300/75 truncate">@${escapeHtml(targetUser.username)}</p>
                   <p class="text-[11px] text-violet-300/65 mt-0.5">${escapeHtml(formatLastSeen(targetUser))}</p>
                 </div>
@@ -1584,14 +1404,10 @@
                 isMine
                   ? `<button
                        type="button"
-                       onclick="state.settingsOpen=!state.settingsOpen; if(state.settingsOpen) state.editProfileOpen=false; render();"
-                       class="p-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-violet-200 cursor-pointer"
-                       title="Ayarlar"
+                       onclick="handleLogout()"
+                       class="px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-bold cursor-pointer"
                      >
-                       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                         <circle cx="12" cy="12" r="3" />
-                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                       </svg>
+                       Çıkış
                      </button>`
                   : ''
               }
@@ -1599,16 +1415,12 @@
 
             ${targetUser.bio ? `<p class="text-xs sm:text-sm text-violet-100 leading-relaxed">${escapeHtml(targetUser.bio)}</p>` : ''}
 
-            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-white/10 text-center">
-              <div class="rounded-2xl bg-obsidian/70 py-2">
-                <p class="text-sm font-extrabold text-white">${userPosts.length}</p>
-                <p class="text-[11px] text-violet-300/70">Gönderi</p>
-              </div>
-              <div class="rounded-2xl bg-obsidian/70 py-2">
+            <div class="grid grid-cols-2 gap-2 text-center">
+              <div class="rounded-2xl bg-obsidian/70 py-2.5 border border-white/5">
                 <p class="text-sm font-extrabold text-white">${followersCount}</p>
                 <p class="text-[11px] text-violet-300/70">Takipçi</p>
               </div>
-              <div class="rounded-2xl bg-obsidian/70 py-2">
+              <div class="rounded-2xl bg-obsidian/70 py-2.5 border border-white/5">
                 <p class="text-sm font-extrabold text-white">${followingCount}</p>
                 <p class="text-[11px] text-violet-300/70">Takip</p>
               </div>
@@ -1618,27 +1430,19 @@
               isMine
                 ? `<button
                      type="button"
-                     onclick="state.editProfileOpen=!state.editProfileOpen; if(state.editProfileOpen) state.settingsOpen=false; render();"
+                     onclick="state.editProfileOpen=!state.editProfileOpen; render();"
                      class="w-full py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-white cursor-pointer"
                    >
                      Profili Düzenle
                    </button>`
-                : `<div class="grid grid-cols-2 gap-2">
+                : `<div class="flex items-center gap-2">
+                     <div class="flex-1">${renderFollowButton(targetUser.id)}</div>
                      <button
                        type="button"
-                       onclick="toggleFollow('${escapeHtml(targetUser.id)}')"
-                       class="py-2.5 rounded-2xl text-xs font-bold cursor-pointer ${
-                         isFollowing ? 'bg-surface border border-purple-500/40 text-purple-200' : 'armor-gradient-btn text-white'
-                       }"
+                       onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(targetUser.id)}'; markMessagesRead('${escapeHtml(targetUser.id)}'); render(); scrollChatToBottom();"
+                       class="px-4 py-2 rounded-xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-purple-200 cursor-pointer"
                      >
-                       ${isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
-                     </button>
-                     <button
-                       type="button"
-                       onclick="state.activeTab='messages'; state.selectedChatUserId='${escapeHtml(targetUser.id)}'; markMessagesRead('${escapeHtml(targetUser.id)}'); render();"
-                       class="py-2.5 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-xs font-bold text-white cursor-pointer"
-                     >
-                       Mesaj Gönder
+                       Mesaj At
                      </button>
                    </div>`
             }
@@ -1649,8 +1453,8 @@
               ? `<form onsubmit="handleSaveProfile(event)" class="rounded-3xl bg-night border border-borderViolet p-5 space-y-3">
                    <h3 class="text-sm font-extrabold text-white">Profili Düzenle</h3>
                    <div>
-                     <label class="block text-xs text-violet-200 mb-1">Görünen Ad</label>
-                     <input id="edit-display-name" type="text" value="${escapeHtml(me.displayName || '')}" class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
+                     <label class="block text-xs text-violet-200 mb-1">Ad Soyad</label>
+                     <input id="edit-display-name" type="text" value="${escapeHtml(me.display_name || '')}" class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
                    </div>
                    <div>
                      <label class="block text-xs text-violet-200 mb-1">Biyografi</label>
@@ -1659,58 +1463,12 @@
                    <div>
                      <label class="block text-xs text-violet-200 mb-1">Profil Fotoğrafı</label>
                      <input type="file" accept="image/*" onchange="handleImageFileChange(this, 'edit-avatar-preview')" class="block w-full text-xs text-violet-200" />
-                     <img id="edit-avatar-preview" data-image="${escapeHtml(me.avatarImage || '')}" src="${escapeHtml(me.avatarImage || '')}" alt="Profil önizleme" class="${me.avatarImage ? '' : 'hidden'} mt-2 w-16 h-16 rounded-full object-cover" />
+                     <img id="edit-avatar-preview" data-image="${escapeHtml(me.avatar_image || '')}" src="${escapeHtml(me.avatar_image || '')}" alt="Önizleme" class="${me.avatar_image ? '' : 'hidden'} mt-2 w-16 h-16 rounded-full object-cover" />
                    </div>
                    <button type="submit" class="w-full py-2.5 rounded-2xl armor-gradient-btn text-white text-xs font-bold cursor-pointer">Kaydet</button>
                  </form>`
               : ''
           }
-
-          ${
-            isMine && state.settingsOpen
-              ? `<div class="rounded-3xl bg-night border border-borderViolet p-5 space-y-4">
-                   <h3 class="text-sm font-extrabold text-white">Supabase Bulut Bağlantısı & Hesap</h3>
-                   <form onsubmit="handleSaveCloudSettings(event)" class="space-y-2.5">
-                     <div>
-                       <label class="block text-xs text-violet-200 mb-1">Supabase Project URL</label>
-                       <input id="cfg-supabase-url" type="text" value="${escapeHtml(cloudConfig.url)}" placeholder="https://xxxx.supabase.co" class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
-                     </div>
-                     <div>
-                       <label class="block text-xs text-violet-200 mb-1">Supabase Publishable / Anon Key</label>
-                       <input id="cfg-supabase-key" type="password" value="${escapeHtml(cloudConfig.anonKey)}" placeholder="sb_publishable_... veya eyJ..." class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
-                     </div>
-                     <div>
-                       <label class="block text-xs text-violet-200 mb-1">Oda Kodu</label>
-                       <input id="cfg-room-id" type="text" value="${escapeHtml(cloudConfig.roomId)}" class="w-full px-3.5 py-2 rounded-xl bg-obsidian border border-white/10 text-xs text-white" />
-                     </div>
-                     <button type="submit" class="w-full py-2.5 rounded-2xl armor-gradient-btn text-white text-xs font-bold cursor-pointer">
-                       Bulut Ayarını Kaydet ve Eşitle
-                     </button>
-                   </form>
-                   <button
-                     type="button"
-                     onclick="handleLogout()"
-                     class="w-full py-2.5 rounded-2xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-bold cursor-pointer"
-                   >
-                     Çıkış Yap
-                   </button>
-                 </div>`
-              : ''
-          }
-
-          <div class="grid grid-cols-3 gap-2">
-            ${userPosts
-              .map((p) =>
-                p.image
-                  ? `<div class="aspect-square rounded-2xl overflow-hidden bg-night border border-white/10">
-                       <img src="${escapeHtml(p.image)}" alt="Gönderi" class="w-full h-full object-cover" onerror="this.style.display='none'" />
-                     </div>`
-                  : `<div class="aspect-square rounded-2xl p-2 bg-night border border-white/10 flex items-center justify-center text-center text-[11px] text-violet-200">
-                       ${escapeHtml(p.caption || 'Not')}
-                     </div>`
-              )
-              .join('')}
-          </div>
         </div>
       `;
     }
@@ -1729,14 +1487,12 @@
         let tabHtml = '';
         if (state.activeTab === 'search') {
           tabHtml = renderSearchTab(me);
-        } else if (state.activeTab === 'create') {
-          tabHtml = renderCreateTab();
-        } else if (state.activeTab === 'messages') {
-          tabHtml = renderMessagesTab(me);
+        } else if (state.activeTab === 'notifications') {
+          tabHtml = renderNotificationsTab(me);
         } else if (state.activeTab === 'profile') {
           tabHtml = renderProfileTab(me);
         } else {
-          tabHtml = renderFeedTab(me);
+          tabHtml = renderMessagesTab(me);
         }
 
         root.innerHTML = `
@@ -1744,8 +1500,12 @@
           <main class="flex-1 pb-20">
             ${tabHtml}
           </main>
-          ${renderBottomNav()}
+          ${renderBottomNav(me)}
         `;
+
+        if (state.activeTab === 'messages' && state.selectedChatUserId) {
+          updateLiveTypingIndicator();
+        }
       } catch (err) {
         const root = document.getElementById('app');
         if (root) {
@@ -1762,45 +1522,31 @@
     }
 
     // =========================================================================
-    // 7. BAŞLATMA VE CANLI SENKRONİZASYON DÖNGÜSÜ
+    // 8. BAŞLATMA VE CANLI SENKRONİZASYON
     // =========================================================================
-    window.addEventListener('DOMContentLoaded', () => {
-      loadCloudConfig();
+    window.addEventListener('DOMContentLoaded', async () => {
       loadLocalState();
-      lastSnapshotHash = getSnapshotHash({
-        users: state.users,
-        posts: state.posts,
-        messages: state.messages,
-        follows: state.follows,
-        typing: typingStatusMap,
-      });
       render();
-      heartbeatPresence();
-      initSupabaseRealtimeBridge();
-      pullCloudSync(false);
 
-      if (bc) {
-        bc.onmessage = (event) => {
-          const data = event?.data;
-          if (!data) return;
-          if (data.type === 'TYPING_STATE') {
-            typingStatusMap[data.senderId] = {
-              toUserId: data.toUserId,
-              updatedAt: data.updatedAt,
-            };
-            if (state.activeTab === 'messages' && state.selectedChatUserId) {
-              updateLiveTypingIndicator(state.selectedChatUserId);
-            }
-          } else if (data.type === 'SYNC_STATE' && data.payload) {
-            applyRemoteSnapshot(data.payload);
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data } = await client.auth.getSession();
+          if (data?.session?.user?.id) {
+            state.sessionUserId = data.session.user.id;
+            persistAll();
+            render();
+            setupRealtimeSubscriptions();
+            await refreshAllDatabaseData();
           }
-        };
+        } catch (err) {}
       }
 
-      setInterval(() => {
-        heartbeatPresence();
-        pullCloudSync(false);
-      }, 2000);
+      setInterval(async () => {
+        if (!state.sessionUserId) return;
+        await heartbeatPresence();
+        await refreshAllDatabaseData();
+      }, 4000);
     });
   </script>
 </body>
