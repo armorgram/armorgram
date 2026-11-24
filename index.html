@@ -541,12 +541,11 @@
     // =========================================================================
     // 4. KİMLİK DOĞRULAMA, VARLIK VE ANLIK MESAJLAŞMA
     // =========================================================================
-    function handleAuthSubmit(event, mode = 'login') {
+    function handleAuthSubmit(event) {
       if (event) event.preventDefault();
       try {
         const rawUsername = document.getElementById('auth-username')?.value || '';
         const password = document.getElementById('auth-password')?.value || '';
-        const rawDisplayName = document.getElementById('auth-displayname')?.value || '';
         const username = normalizeUsername(rawUsername);
 
         if (!username) {
@@ -560,15 +559,12 @@
 
         const existingUser = state.users.find((u) => normalizeUsername(u.username) === username);
 
-        if (mode === 'register') {
-          if (existingUser) {
-            showToast('Bu kullanıcı adı zaten alınmış, giriş yapmayı dene.', 'error');
-            return;
-          }
+        if (!existingUser) {
+          // Kayıt ol alanı olmadan doğrudan kullanıcı adı + şifre ile yeni hesap oluşturur
           const newUser = {
             id: 'usr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             username,
-            displayName: (rawDisplayName || username).trim().slice(0, 32),
+            displayName: username,
             password,
             bio: '',
             avatarImage: '',
@@ -579,15 +575,11 @@
           state.activeTab = 'feed';
           persistAll();
           pushCloudSync(true);
-          showToast('Hesabın oluşturuldu!', 'success');
+          showToast(`Hoş geldin, ${newUser.username}!`, 'success');
           render();
           return;
         }
 
-        if (!existingUser) {
-          showToast('Kullanıcı bulunamadı. Önce Kayıt Ol ile hesap açabilirsin.', 'error');
-          return;
-        }
         if (existingUser.password && existingUser.password !== password) {
           showToast('Şifre hatalı.', 'error');
           return;
@@ -601,7 +593,7 @@
         showToast(`Hoş geldin, ${existingUser.displayName || existingUser.username}!`, 'success');
         render();
       } catch (err) {
-        showToast('Giriş/kayıt sırasında hata oluştu.', 'error');
+        showToast('Giriş sırasında hata oluştu.', 'error');
       }
     }
 
@@ -904,19 +896,9 @@
                 A
               </div>
               <h1 class="text-2xl font-extrabold tracking-tight text-white">Armorgram</h1>
-              <p class="text-xs sm:text-sm text-violet-300/75 mt-1">Özel akış, fotoğraf paylaşımı ve anlık mesajlaşma</p>
             </div>
 
-            <div class="space-y-3">
-              <div>
-                <label class="block text-xs font-semibold text-violet-200 mb-1">Görünen Ad (Kayıt için)</label>
-                <input
-                  id="auth-displayname"
-                  type="text"
-                  placeholder="Örn: Zırhlı"
-                  class="w-full px-4 py-2.5 rounded-2xl bg-obsidian border border-white/10 text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
-                />
-              </div>
+            <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
               <div>
                 <label class="block text-xs font-semibold text-violet-200 mb-1">Kullanıcı Adı</label>
                 <input
@@ -938,34 +920,13 @@
                 />
               </div>
 
-              <div class="pt-2 grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onclick="handleAuthSubmit(event, 'login')"
-                  class="py-3 px-4 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer"
-                >
-                  Giriş Yap
-                </button>
-                <button
-                  type="button"
-                  onclick="handleAuthSubmit(event, 'register')"
-                  class="py-3 px-4 rounded-2xl bg-surface hover:bg-borderViolet/60 border border-white/10 text-violet-100 text-sm font-bold cursor-pointer"
-                >
-                  Kayıt Ol
-                </button>
-              </div>
-            </div>
-
-            <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-violet-300/70">
-              <span>Bulut Durumu: ${hasCloudConfigured() ? 'Supabase Hazır' : 'Yerel Depolama'}</span>
               <button
-                type="button"
-                onclick="pullCloudSync(true)"
-                class="text-purple-300 hover:text-white font-semibold cursor-pointer"
+                type="submit"
+                class="w-full py-3 px-4 rounded-2xl armor-gradient-btn text-white text-sm font-bold shadow-armorSm cursor-pointer"
               >
-                Şimdi Eşitle
+                Giriş Yap
               </button>
-            </div>
+            </form>
           </div>
         </div>
       `;
