@@ -905,18 +905,53 @@
     }
 
     function renderAuthScreen() {
+      const isRegister = authMode === 'register';
       return `
         <div class="flex-1 flex items-center justify-center p-4 bg-obsidian">
           <div class="w-full max-w-[360px] space-y-3">
             <div class="rounded-2xl bg-night border border-borderViolet px-7 py-8 shadow-armor">
-              <div class="text-center mb-7">
+              <div class="text-center mb-6">
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl armor-gradient-btn text-white font-extrabold text-2xl shadow-armorSm mb-3">
                   A
                 </div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-white">Armorgram</h1>
               </div>
 
+              <div class="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-obsidian border border-white/10 mb-4">
+                <button
+                  type="button"
+                  onclick="authMode='login'; render();"
+                  class="py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                    !isRegister ? 'armor-gradient-btn text-white' : 'text-violet-300/70 hover:text-white'
+                  }"
+                >
+                  Giriş Yap
+                </button>
+                <button
+                  type="button"
+                  onclick="authMode='register'; render();"
+                  class="py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                    isRegister ? 'armor-gradient-btn text-white' : 'text-violet-300/70 hover:text-white'
+                  }"
+                >
+                  Kayıt Ol
+                </button>
+              </div>
+
               <form onsubmit="handleAuthSubmit(event)" class="space-y-2.5">
+                ${
+                  isRegister
+                    ? `<div>
+                         <input
+                           id="auth-fullname"
+                           type="text"
+                           autocomplete="name"
+                           placeholder="Ad Soyad"
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-xs sm:text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
+                         />
+                       </div>`
+                    : ''
+                }
                 <div>
                   <input
                     id="auth-username"
@@ -930,7 +965,7 @@
                   <input
                     id="auth-password"
                     type="password"
-                    autocomplete="current-password"
+                    autocomplete="${isRegister ? 'new-password' : 'current-password'}"
                     placeholder="Şifre"
                     class="w-full px-3.5 py-2.5 rounded-xl bg-obsidian border border-white/10 text-xs sm:text-sm text-white placeholder-violet-300/40 focus:outline-none focus:border-purple-500"
                   />
@@ -940,14 +975,25 @@
                   type="submit"
                   class="w-full mt-2 py-2.5 px-4 rounded-xl armor-gradient-btn text-white text-xs sm:text-sm font-bold shadow-armorSm cursor-pointer"
                 >
-                  Giriş Yap
+                  ${isRegister ? 'Kayıt Ol ve Giriş Yap' : 'Giriş Yap'}
                 </button>
               </form>
             </div>
 
-            <div class="rounded-2xl bg-night border border-borderViolet px-5 py-4 text-center">
+            <div class="rounded-2xl bg-night border border-borderViolet px-5 py-3.5 text-center">
               <p class="text-xs text-violet-200/80">
-                Hesabın yoksa kullanıcı adı ve şifre yazıp <span class="font-bold text-white">Giriş Yap</span> ile hemen oluşturabilirsin.
+                ${
+                  isRegister
+                    ? 'Zaten hesabın var mı? '
+                    : 'Hesabın yok mu? '
+                }
+                <button
+                  type="button"
+                  onclick="authMode='${isRegister ? 'login' : 'register'}'; render();"
+                  class="font-bold text-purple-300 hover:text-white cursor-pointer"
+                >
+                  ${isRegister ? 'Giriş Yap' : 'Kayıt Ol'}
+                </button>
               </p>
             </div>
           </div>
