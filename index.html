@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Armorgram</title>
+  <title>Amorgram</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase JS v2 (Realtime WebSocket desteği için) -->
@@ -67,6 +67,39 @@
       background: rgba(167, 139, 250, 0.25);
       border-radius: 999px;
     }
+  
+    /* AMORGRAM_PRO_STYLE_V1 — profesyonel, açık ve temiz arayüz */
+    :root { color-scheme: light; --ag-blue:#2563eb; --ag-ink:#172033; --ag-muted:#64748b; --ag-line:#e5eaf2; --ag-bg:#f4f7fb; }
+    html, body { background:#f4f7fb !important; color:var(--ag-ink) !important; font-family:Inter,system-ui,sans-serif !important; }
+    body { min-height:100vh; }
+    #app { width:100%; min-height:100vh; background:#f4f7fb !important; color:var(--ag-ink) !important; }
+    #app header, #app nav { background:rgba(255,255,255,.94) !important; color:var(--ag-ink) !important; border-color:var(--ag-line) !important; box-shadow:0 4px 18px rgba(15,23,42,.045) !important; backdrop-filter:blur(14px); }
+    #app main { color:var(--ag-ink) !important; }
+    #app .bg-obsidian, #app .bg-night, #app .bg-surface { background:#fff !important; }
+    #app .bg-obsidian\/70, #app .bg-night\/90, #app .bg-night\/95 { background:#f8fafc !important; }
+    #app [class*="border-borderViolet"], #app [class*="border-violet"], #app [class*="border-white/"] { border-color:var(--ag-line) !important; }
+    #app .text-white, #app .text-violet-50, #app .text-violet-100, #app .text-violet-200 { color:var(--ag-ink) !important; }
+    #app .text-violet-300, #app .text-violet-300\/70, #app .text-violet-300\/75, #app .text-violet-300\/60, #app .text-violet-200\/70 { color:var(--ag-muted) !important; }
+    #app .armor-gradient-btn { background:linear-gradient(135deg,#2563eb,#3b82f6) !important; color:#fff !important; box-shadow:0 7px 18px rgba(37,99,235,.20) !important; border:0 !important; }
+    #app button { transition:background .18s ease,transform .18s ease,box-shadow .18s ease; }
+    #app button:not(.armor-gradient-btn):hover { background:#eef4ff !important; }
+    #app input:not([type="file"]), #app textarea, #app select { background:#fff !important; color:var(--ag-ink) !important; border:1px solid #dbe3ef !important; border-radius:12px !important; }
+    #app input::placeholder, #app textarea::placeholder { color:#94a3b8 !important; }
+    #app input:focus, #app textarea:focus, #app select:focus { outline:none !important; border-color:#60a5fa !important; box-shadow:0 0 0 3px rgba(59,130,246,.12) !important; }
+    #app img { max-width:100%; }
+    #app .rounded-3xl, #app .rounded-2xl { box-shadow:0 5px 22px rgba(15,23,42,.045); }
+    #app .bg-fuchsia-600 { background:#2563eb !important; }
+    #app .text-purple-200, #app .text-purple-300 { color:#2563eb !important; }
+    #app .border-purple-500\/40 { border-color:#bfdbfe !important; }
+    #toast-container > div { color:#fff !important; }
+    @media (min-width:768px) {
+      #app main > div { max-width:760px; }
+    }
+    @media (max-width:640px) {
+      #app { padding-bottom:env(safe-area-inset-bottom); }
+      #app .rounded-3xl { border-radius:20px !important; }
+    }
+
   </style>
 </head>
 <body class="bg-obsidian text-violet-50 min-h-screen flex flex-col">
@@ -914,7 +947,7 @@
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl armor-gradient-btn text-white font-extrabold text-2xl shadow-armorSm mb-3">
                   A
                 </div>
-                <h1 class="text-2xl font-extrabold tracking-tight text-white">Armorgram</h1>
+                <h1 class="text-2xl font-extrabold tracking-tight text-white">Amorgram</h1>
               </div>
 
               <div class="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-obsidian border border-white/10 mb-4">
@@ -1012,7 +1045,7 @@
               class="flex items-center gap-2.5 cursor-pointer"
             >
               <span class="w-8 h-8 rounded-xl armor-gradient-btn flex items-center justify-center text-white font-extrabold text-sm shadow-armorSm">A</span>
-              <span class="font-extrabold text-base tracking-tight text-white">Armorgram</span>
+              <span class="font-extrabold text-base tracking-tight text-white">Amorgram</span>
             </button>
 
             <div class="flex items-center gap-2">
